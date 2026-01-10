@@ -30,6 +30,7 @@ static const char *month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 static void watchface_timer_cb(lv_timer_t *timer)
 {
     struct tm time;
+    uint16_t voltage_mv = 0;
     uint8_t battery_percent = 0;
     bool is_charging = false;
 
@@ -49,21 +50,35 @@ static void watchface_timer_cb(lv_timer_t *timer)
                                   time.tm_mday);
         }
     }
-
-    // Read battery status
-    if (axp2101_get_battery_percent(&battery_percent) == ESP_OK)
+    else
     {
-        axp2101_is_charging(&is_charging);
+        // Fallback display if RTC fails
+        lv_label_set_text(time_label, "--:--");
+        ESP_LOGW(TAG, "Failed to read RTC time");
+    }
 
-        // Update battery label with percentage
+    // Read battery status using SAFE function with retry logic
+    esp_err_t battery_ret = axp2101_get_battery_data_safe(
+        &voltage_mv,      // Get voltage
+        &battery_percent, // Get percentage
+        &is_charging      // Get charging status
+    );
+
+    if (battery_ret == ESP_OK)
+    {
+        // Build battery display string with percentage and voltage
+        char battery_str[32];
         if (is_charging)
         {
-            lv_label_set_text_fmt(battery_label, LV_SYMBOL_CHARGE " %d%%", battery_percent);
+            snprintf(battery_str, sizeof(battery_str),
+                     LV_SYMBOL_CHARGE " %d%% %.2fV", battery_percent, voltage_mv / 1000.0f);
         }
         else
         {
-            lv_label_set_text_fmt(battery_label, "%d%%", battery_percent);
+            snprintf(battery_str, sizeof(battery_str),
+                     "%d%% %.2fV", battery_percent, voltage_mv / 1000.0f);
         }
+        lv_label_set_text(battery_label, battery_str);
 
         // Change color based on battery level
         if (battery_percent > 30)
@@ -78,6 +93,13 @@ static void watchface_timer_cb(lv_timer_t *timer)
         {
             lv_obj_set_style_text_color(battery_label, lv_color_hex(0xFF0000), 0); // Red
         }
+    }
+    else
+    {
+        // Fallback display if battery reading fails completely
+        lv_label_set_text(battery_label, "? --%%");
+        lv_obj_set_style_text_color(battery_label, lv_color_hex(0x888888), 0); // Gray
+        ESP_LOGW(TAG, "Failed to read battery data");
     }
 }
 
@@ -131,7 +153,7 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     lv_obj_set_style_text_font(battery_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(battery_label, lv_color_hex(0x00FF00), 0); // Green initially
     lv_label_set_text(battery_label, "100%");
-    lv_obj_align(battery_label, LV_ALIGN_TOP_RIGHT, -10, 10);
+    lv_obj_align(battery_label, LV_ALIGN_TOP_RIGHT, -80, 10);
 
     // Create update timer (1000ms = 1 second)
     update_timer = lv_timer_create(watchface_timer_cb, 1000, NULL);

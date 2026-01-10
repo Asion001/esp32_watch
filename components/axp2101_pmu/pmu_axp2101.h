@@ -61,6 +61,25 @@ extern "C"
      */
     esp_err_t axp2101_is_vbus_present(bool *vbus_present);
 
+    /**
+     * @brief Safely get all battery data with retry logic and sanity checks
+     *
+     * This is the recommended function for UI updates. It includes:
+     * - Automatic retry on I2C errors (up to 3 attempts)
+     * - Sanity checks on all values
+     * - Graceful fallback to safe defaults on failure
+     *
+     * Note: AXP2101 does not have battery current measurement capability.
+     * For current monitoring, add external INA219/INA226 sensor.
+     *
+     * @param voltage_mv Pointer to store voltage (or NULL to skip)
+     * @param percent Pointer to store percentage (or NULL to skip)
+     * @param is_charging Pointer to store charging status (or NULL to skip)
+     * @return esp_err_t ESP_OK if at least one value was read successfully
+     */
+    esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
+                                            bool *is_charging);
+
 #ifdef __cplusplus
 }
 #endif
