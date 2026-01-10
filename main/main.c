@@ -14,6 +14,7 @@
 
 static const char *TAG = "Main";
 
+#ifdef CONFIG_SLEEP_MANAGER_ENABLE
 /**
  * @brief Sleep check task - monitors inactivity and triggers sleep
  */
@@ -45,6 +46,7 @@ static void sleep_check_task(void *pvParameters)
     vTaskDelete(NULL);
 #endif
 }
+#endif
 
 void app_main(void)
 {
@@ -71,13 +73,13 @@ void app_main(void)
 
     // Create watchface on active screen
     watchface_create(lv_screen_active());
-    
+
     // Create settings screen (hidden by default)
     settings_create(lv_screen_active());
-    
+
     // Create display settings screen (hidden by default)
     display_settings_create(lv_screen_active());
-    
+
     // Create about screen (hidden by default)
     about_screen_create(lv_screen_active());
 

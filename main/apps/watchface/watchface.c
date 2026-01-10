@@ -116,6 +116,7 @@ static const widget_config_t widget_configs[] = {
 
 #define WIDGET_COUNT (sizeof(widget_configs) / sizeof(widget_configs[0]))
 
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
 /**
  * @brief Touch event callback to reset sleep timer
  */
@@ -130,10 +131,9 @@ static void touch_event_cb(lv_event_t *e)
         sleep_manager_reset_timer();
         ESP_LOGD(TAG, "Touch detected, sleep timer reset");
     }
-#else
-    (void)e; // Suppress unused parameter warning
 #endif
 }
+#endif
 
 /**
  * @brief Settings button event callback
@@ -141,7 +141,7 @@ static void touch_event_cb(lv_event_t *e)
 static void settings_button_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-    
+
     if (code == LV_EVENT_CLICKED)
     {
         ESP_LOGI(TAG, "Settings button clicked");
@@ -372,7 +372,7 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     lv_obj_set_size(settings_button, 50, 50);
     lv_obj_align(settings_button, LV_ALIGN_TOP_LEFT, 10, 10);
     lv_obj_add_event_cb(settings_button, settings_button_event_cb, LV_EVENT_CLICKED, NULL);
-    
+
     lv_obj_t *settings_icon = lv_label_create(settings_button);
     lv_label_set_text(settings_icon, LV_SYMBOL_SETTINGS);
     lv_obj_set_style_text_font(settings_icon, &lv_font_montserrat_20, 0);
