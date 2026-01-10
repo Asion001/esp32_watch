@@ -21,28 +21,24 @@ jobs:
       with:
         submodules: 'recursive'
     
-    - name: Setup ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: release-v5.4
-        target: esp32c6
-    
     - name: Configure - All Features ON
       run: |
-        . $IDF_PATH/export.sh
         # Use all-features config (includes base + all optional features)
         cat sdkconfig.defaults sdkconfig.all-features > sdkconfig
     
     - name: Build firmware
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py build
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: release-v5.4
+        target: esp32c6
+        command: idf.py build
     
     - name: Check binary size
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py size
-        idf.py size-components
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: release-v5.4
+        target: esp32c6
+        command: idf.py size && idf.py size-components
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -65,28 +61,24 @@ jobs:
       with:
         submodules: 'recursive'
     
-    - name: Setup ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: release-v5.4
-        target: esp32c6
-    
     - name: Configure - Minimal Features
       run: |
-        . $IDF_PATH/export.sh
         # Use minimal config (base + disabled optional features)
         cat sdkconfig.defaults sdkconfig.minimal > sdkconfig
     
     - name: Build firmware
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py build
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: release-v5.4
+        target: esp32c6
+        command: idf.py build
     
     - name: Check binary size
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py size
-        idf.py size-components
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: release-v5.4
+        target: esp32c6
+        command: idf.py size && idf.py size-components
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -108,22 +100,19 @@ jobs:
       with:
         submodules: 'recursive'
     
-    - name: Setup ESP-IDF
+    - name: Build firmware (default config)
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: release-v5.4
         target: esp32c6
-    
-    - name: Build firmware (default config)
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py build
+        command: idf.py build
     
     - name: Check binary size
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py size
-        idf.py size-components
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: release-v5.4
+        target: esp32c6
+        command: idf.py size && idf.py size-components
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -146,16 +135,12 @@ jobs:
       with:
         submodules: 'recursive'
     
-    - name: Setup ESP-IDF
+    - name: Build for analysis
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: release-v5.4
         target: esp32c6
-    
-    - name: Build for analysis
-      run: |
-        . $IDF_PATH/export.sh
-        idf.py build
+        command: idf.py build
     
     - name: Check for common issues
       run: |
