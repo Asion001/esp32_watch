@@ -1,4 +1,20 @@
-# ESP32-C6 Smartwatch Firmware Makefile
+
+    config SLEEP_MANAGER_GPIO_WAKEUP
+        bool "Enable GPIO wake-up"
+        depends on SLEEP_MANAGER_ENABLE
+        default y
+        help
+            Enable hardware wake-up sources (boot button).
+            Disable to test sleep without wake-up capability.
+
+    config SLEEP_MANAGER_TOUCH_WAKEUP
+        bool "Enable touch screen wake-up"
+        depends on SLEEP_MANAGER_GPIO_WAKEUP
+        default y
+        help
+            Enable touch screen as wake-up source.
+            Disable to save battery and require boot button press to wake.
+            When disabled, only the boot button (GPIO9) will wake the watch.# ESP32-C6 Smartwatch Firmware Makefile
 # Quick reference for common build tasks
 
 .PHONY: help build flash monitor clean menuconfig defconfig test-all test-minimal test-default check format

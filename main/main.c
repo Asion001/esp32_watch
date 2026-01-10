@@ -6,6 +6,7 @@
 #include "lvgl.h"
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
+#include "screen_manager.h"
 #include "apps/watchface/watchface.h"
 #include "apps/settings/settings.h"
 #include "apps/settings/screens/display_settings.h"
@@ -56,10 +57,18 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing display...");
     bsp_display_start();
 
+    // Initialize screen manager
+    ESP_LOGI(TAG, "Initializing screen manager...");
+    esp_err_t ret = screen_manager_init();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize screen manager: %s", esp_err_to_name(ret));
+    }
+
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
     // Initialize sleep manager
     ESP_LOGI(TAG, "Initializing sleep manager...");
-    esp_err_t ret = sleep_manager_init();
+    ret = sleep_manager_init();
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to initialize sleep manager: %s", esp_err_to_name(ret));
@@ -71,8 +80,13 @@ void app_main(void)
     // Lock LVGL for UI creation
     bsp_display_lock(0);
 
-    // Create watchface on active screen
-    watchface_create(lv_screen_active());
+    // Create watchface on active screen (root screen)
+    lv_obj_t *watchface = watchface_create(lv_screen_active());
+    if (watchface)
+    {
+        // Load watchface screen immediately
+        screen_manager_show(watchface);
+    }
 
     // Create settings screen (hidden by default)
     settings_create(lv_screen_active());

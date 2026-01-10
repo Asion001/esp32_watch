@@ -64,6 +64,9 @@
 - [x] Main settings menu screen
 - [x] Navigation system (back button, menu items)
 - [x] Settings storage layer (NVS wrapper)
+- [ ] Clear data/factory reset option
+- [ ] Reset uptime option
+- [ ] Show used flash/RAM statistics
 
 ### Display Settings
 
@@ -71,7 +74,6 @@
 - [x] Brightness persistence (save to NVS)
 - [x] Sleep timeout configuration (5-300 seconds)
 - [x] Display timeout setting
-- [ ] Auto-brightness toggle (future with light sensor)
 
 ### WiFi Configuration
 

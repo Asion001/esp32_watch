@@ -180,7 +180,8 @@ esp_err_t axp2101_is_charging(bool *is_charging)
     }
 
     // Check charging bit (bit 6 in status register)
-    *is_charging = (status & 0x40) != 0;
+    // NOTE: Logic appears to be inverted - bit is 0 when charging
+    *is_charging = (status & 0x40) == 0;
 
     return ESP_OK;
 }
@@ -209,7 +210,8 @@ esp_err_t axp2101_is_vbus_present(bool *vbus_present)
     }
 
     // Check VBUS present bit (bit 5 in status register)
-    *vbus_present = (status & 0x20) != 0;
+    // NOTE: Logic appears to be inverted - bit is 0 when VBUS present
+    *vbus_present = (status & 0x20) == 0;
 
     return ESP_OK;
 }

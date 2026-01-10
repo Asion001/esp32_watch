@@ -3,7 +3,7 @@
  * @brief Sleep and Power Management for ESP32-C6 Watch
  *
  * Handles display sleep, light sleep mode, and wake-up events.
- * Uses touch interrupt (GPIO15) as primary wake source.
+ * Wake sources: boot button (GPIO9) always enabled, touch (GPIO15) optional.
  *
  * Features can be enabled/disabled via menuconfig:
  * Component config → Sleep Manager Configuration
@@ -30,6 +30,9 @@ extern "C"
 
 /** Touch interrupt GPIO (FT3168 INT pin) */
 #define TOUCH_INT_GPIO (15)
+
+/** Boot button GPIO (hardware button wake source) */
+#define BOOT_BUTTON_GPIO (9)
 
     /**
      * @brief Initialize sleep manager
@@ -86,6 +89,15 @@ extern "C"
      */
     uint32_t sleep_manager_get_inactive_time(void);
 
+    /**
+     * @brief Check if USB/JTAG is connected
+     *
+     * Uses AXP2101 PMU to detect VBUS presence
+     *
+     * @return true if USB power is detected, false otherwise
+     */
+    bool sleep_manager_is_usb_connected(void);
+
 #else // !CONFIG_SLEEP_MANAGER_ENABLE
 
 // Stub functions when sleep manager is disabled
@@ -95,6 +107,7 @@ static inline esp_err_t sleep_manager_wake(void) { return ESP_OK; }
 static inline bool sleep_manager_should_sleep(void) { return false; }
 static inline void sleep_manager_reset_timer(void) {}
 static inline uint32_t sleep_manager_get_inactive_time(void) { return 0; }
+static inline bool sleep_manager_is_usb_connected(void) { return false; }
 
 #endif // CONFIG_SLEEP_MANAGER_ENABLE
 

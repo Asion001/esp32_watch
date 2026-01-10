@@ -9,6 +9,7 @@
 #include "pmu_axp2101.h"
 #include "sleep_manager.h"
 #include "uptime_tracker.h"
+#include "screen_manager.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
 #include <time.h>
@@ -22,7 +23,6 @@ static lv_obj_t *date_label = NULL;
 static lv_obj_t *battery_label = NULL;
 static lv_obj_t *uptime_label = NULL;
 static lv_obj_t *boot_count_label = NULL;
-static lv_obj_t *settings_button = NULL;
 static lv_timer_t *update_timer = NULL;
 
 // Save timer for periodic NVS writes
@@ -136,29 +136,23 @@ static void touch_event_cb(lv_event_t *e)
 #endif
 
 /**
- * @brief Settings gesture/button event callback
+ * @brief Gesture event callback for opening settings
  */
-static void settings_button_event_cb(lv_event_t *e)
+static void swipe_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-    
+
+    ESP_LOGI(TAG, "Event received: code=%d", code);
+
     if (code == LV_EVENT_GESTURE)
     {
         lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        ESP_LOGI(TAG, "Gesture detected: direction=%d (BOTTOM=%d)", dir, LV_DIR_BOTTOM);
         if (dir == LV_DIR_BOTTOM)
         {
             ESP_LOGI(TAG, "Swipe down gesture detected - opening settings");
-            bsp_display_lock(0);
             settings_show();
-            bsp_display_unlock();
         }
-    }
-    else if (code == LV_EVENT_CLICKED)
-    {
-        ESP_LOGI(TAG, "Settings button clicked");
-        bsp_display_lock(0);
-        settings_show();
-        bsp_display_unlock();
     }
 }
 
@@ -307,12 +301,24 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
         ESP_LOGE(TAG, "Failed to initialize uptime tracker");
     }
 
-    // Create main screen container
-    screen = lv_obj_create(parent);
-    lv_obj_set_size(screen, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
-    lv_obj_set_style_border_width(screen, 0, 0);
-    lv_obj_set_style_pad_all(screen, 0, 0);
+    // Create screen using screen_manager (root screen - no gestures from manager)
+    screen_config_t config = {
+        .title = NULL,                 // No title for watchface
+        .anim_type = SCREEN_ANIM_NONE, // Root screen, no animation for itself
+        .hide_callback = NULL,         // No hide callback for root screen
+        .has_gesture_hint = false      // No hint bar for root screen
+    };
+
+    screen = screen_manager_create(&config);
+    if (!screen)
+    {
+        ESP_LOGE(TAG, "Failed to create screen");
+        return NULL;
+    }
+
+    // Manually add swipe down gesture to open settings
+    ESP_LOGI(TAG, "Setting up gesture detection for watchface");
+    lv_obj_add_event_cb(screen, swipe_event_cb, LV_EVENT_GESTURE, NULL);
 
     // Build all widgets from configuration table
     for (size_t i = 0; i < WIDGET_COUNT; i++)
@@ -377,10 +383,6 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
 
     // Do initial update immediately
     watchface_timer_cb(NULL);
-
-    // Add swipe gesture to open settings (swipe down from top)
-    lv_obj_add_event_cb(screen, settings_button_event_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_clear_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
     // Add touch event callback to screen to reset sleep timer

@@ -12,6 +12,7 @@
 #include "esp_timer.h"
 #include "bsp/esp-bsp.h"
 #include "driver/gpio.h"
+#include "pmu_axp2101.h"
 
 static const char *TAG = "SleepMgr";
 
@@ -42,6 +43,14 @@ static uint8_t saved_timer_count = 0;
 static esp_err_t display_sleep(void)
 {
 #ifdef CONFIG_SLEEP_MANAGER_BACKLIGHT_CONTROL
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB
+    // Don't turn off screen if USB/JTAG is connected (for development/debugging)
+    if (sleep_manager_is_usb_connected())
+    {
+        SLEEP_LOGD(TAG, "USB connected - screen off prevented");
+        return ESP_OK;
+    }
+#endif
     // Turn off backlight
     bsp_display_backlight_off();
 
@@ -136,24 +145,44 @@ esp_err_t sleep_manager_init(void)
     ESP_LOGI(TAG, "Initializing sleep manager (timeout: %d seconds)", CONFIG_SLEEP_TIMEOUT_SECONDS);
 
 #ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
-    // Configure GPIO15 (touch interrupt) as wake source
+    // Configure wake sources: boot button (GPIO9) and optionally touch (GPIO15)
     // ESP32-C6 uses gpio_wakeup, not ext0/ext1
     // Touch controller pulls INT low when touch detected
+    // Boot button connects to ground when pressed
 
-    // Configure GPIO as input with pull-up (touch INT is active-low)
-    gpio_config_t io_conf = {
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+    // Configure touch GPIO as input with pull-up (touch INT is active-low)
+    gpio_config_t touch_conf = {
         .pin_bit_mask = (1ULL << TOUCH_INT_GPIO),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE};
-    gpio_config(&io_conf);
+    gpio_config(&touch_conf);
 
-    // Enable GPIO wakeup (wake on LOW level - touch detected)
+    // Enable GPIO wakeup on touch (wake on LOW level - touch detected)
     esp_err_t ret = gpio_wakeup_enable(TOUCH_INT_GPIO, GPIO_INTR_LOW_LEVEL);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to enable GPIO wakeup: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to enable touch GPIO wakeup: %s", esp_err_to_name(ret));
+        return ret;
+    }
+#endif
+
+    // Configure boot button GPIO as input with pull-up (button is active-low)
+    gpio_config_t button_conf = {
+        .pin_bit_mask = (1ULL << BOOT_BUTTON_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE};
+    gpio_config(&button_conf);
+
+    // Enable GPIO wakeup on boot button (wake on LOW level - button pressed)
+    ret = gpio_wakeup_enable(BOOT_BUTTON_GPIO, GPIO_INTR_LOW_LEVEL);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to enable button GPIO wakeup: %s", esp_err_to_name(ret));
         return ret;
     }
 
@@ -165,7 +194,13 @@ esp_err_t sleep_manager_init(void)
         return ret;
     }
 
-    ESP_LOGI(TAG, "GPIO wake-up enabled on GPIO%d", TOUCH_INT_GPIO);
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+    ESP_LOGI(TAG, "GPIO wake-up enabled: GPIO%d (touch) + GPIO%d (button)",
+             TOUCH_INT_GPIO, BOOT_BUTTON_GPIO);
+#else
+    ESP_LOGI(TAG, "GPIO wake-up enabled: GPIO%d (button only - touch disabled for battery saving)",
+             BOOT_BUTTON_GPIO);
+#endif
 #else
     ESP_LOGI(TAG, "GPIO wake-up disabled");
 #endif
@@ -177,8 +212,15 @@ esp_err_t sleep_manager_init(void)
     last_activity_time = esp_timer_get_time();
     is_sleeping = false;
 
-    ESP_LOGI(TAG, "Sleep manager initialized (wake GPIO: %d, timeout: %d ms)",
-             TOUCH_INT_GPIO, SLEEP_TIMEOUT_MS);
+#ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+    ESP_LOGI(TAG, "Sleep manager initialized (wake: touch+button, timeout: %d ms)", SLEEP_TIMEOUT_MS);
+#else
+    ESP_LOGI(TAG, "Sleep manager initialized (wake: button only, timeout: %d ms)", SLEEP_TIMEOUT_MS);
+#endif
+#else
+    ESP_LOGI(TAG, "Sleep manager initialized (no wake sources, timeout: %d ms)", SLEEP_TIMEOUT_MS);
+#endif
 
     return ESP_OK;
 }
@@ -277,12 +319,39 @@ esp_err_t sleep_manager_wake(void)
     return ESP_OK;
 }
 
+bool sleep_manager_is_usb_connected(void)
+{
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SLEEP_ON_USB
+    bool vbus_present = false;
+    esp_err_t ret = axp2101_is_vbus_present(&vbus_present);
+
+    if (ret != ESP_OK)
+    {
+        ESP_LOGW(TAG, "Failed to read VBUS status: %s", esp_err_to_name(ret));
+        return false; // Assume not connected on error
+    }
+
+    return vbus_present;
+#else
+    return false;
+#endif
+}
+
 bool sleep_manager_should_sleep(void)
 {
     if (is_sleeping)
     {
         return false; // Already sleeping
     }
+
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SLEEP_ON_USB
+    // Don't sleep if USB/JTAG is connected (for development/debugging)
+    if (sleep_manager_is_usb_connected())
+    {
+        SLEEP_LOGD(TAG, "USB connected - sleep prevented");
+        return false;
+    }
+#endif
 
     uint32_t inactive_ms = sleep_manager_get_inactive_time();
     return (inactive_ms >= SLEEP_TIMEOUT_MS);

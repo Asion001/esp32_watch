@@ -1,0 +1,11 @@
+menu "Screen Manager"
+
+    config SCREEN_MANAGER_MAX_STACK_DEPTH
+        int "Maximum navigation stack depth"
+        default 8
+        range 2 16
+        help
+            Maximum number of screens that can be in the navigation stack.
+            Prevents memory issues from deep nesting.
+
+endmenu

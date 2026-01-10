@@ -4,6 +4,7 @@
  */
 
 #include "about_screen.h"
+#include "screen_manager.h"
 #include "uptime_tracker.h"
 #include "build_time.h"
 #include "esp_log.h"
@@ -29,21 +30,6 @@ static uint32_t get_flash_size_mb(void)
 // UI elements
 static lv_obj_t *about_screen = NULL;
 static lv_obj_t *info_label = NULL;
-static lv_obj_t *previous_screen = NULL;
-
-/**
- * @brief Back button event handler
- */
-static void back_button_event_cb(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-
-    if (code == LV_EVENT_CLICKED)
-    {
-        ESP_LOGI(TAG, "Back button clicked");
-        about_screen_hide();
-    }
-}
 
 /**
  * @brief Build the system information text
@@ -98,33 +84,19 @@ lv_obj_t *about_screen_create(lv_obj_t *parent)
 {
     ESP_LOGI(TAG, "Creating about screen");
 
-    // Create screen container
-    about_screen = lv_obj_create(parent);
-    lv_obj_set_size(about_screen, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(about_screen, lv_color_black(), 0);
-    lv_obj_set_style_border_width(about_screen, 0, 0);
-    lv_obj_set_style_pad_all(about_screen, 10, 0);
+    // Create screen using screen_manager
+    screen_config_t config = {
+        .title = "About",
+        .anim_type = SCREEN_ANIM_HORIZONTAL,
+        .hide_callback = about_screen_hide,
+        .has_gesture_hint = true};
 
-    // Hide by default
-    lv_obj_add_flag(about_screen, LV_OBJ_FLAG_HIDDEN);
-
-    // Create title label
-    lv_obj_t *title = lv_label_create(about_screen);
-    lv_label_set_text(title, "About");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(title, lv_color_white(), 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
-
-    // Create back button
-    lv_obj_t *back_btn = lv_btn_create(about_screen);
-    lv_obj_set_size(back_btn, 60, 40);
-    lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-    lv_obj_add_event_cb(back_btn, back_button_event_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t *back_label = lv_label_create(back_btn);
-    lv_label_set_text(back_label, LV_SYMBOL_LEFT);
-    lv_obj_set_style_text_font(back_label, &lv_font_montserrat_20, 0);
-    lv_obj_center(back_label);
+    about_screen = screen_manager_create(&config);
+    if (!about_screen)
+    {
+        ESP_LOGE(TAG, "Failed to create about screen");
+        return NULL;
+    }
 
     // Create scrollable container for info
     lv_obj_t *info_container = lv_obj_create(about_screen);
@@ -158,17 +130,13 @@ void about_screen_show(void)
     {
         ESP_LOGI(TAG, "Showing about screen");
 
-        // Save reference to previous screen
-        previous_screen = lv_scr_act();
-
         // Update info text with latest values
         char info_text[512];
         build_info_text(info_text, sizeof(info_text));
         lv_label_set_text(info_label, info_text);
 
-        // Show screen
-        lv_obj_clear_flag(about_screen, LV_OBJ_FLAG_HIDDEN);
-        lv_scr_load(about_screen);
+        // Show screen with animation
+        screen_manager_show(about_screen);
     }
     else
     {
@@ -178,16 +146,6 @@ void about_screen_show(void)
 
 void about_screen_hide(void)
 {
-    if (about_screen && previous_screen)
-    {
-        ESP_LOGI(TAG, "Hiding about screen");
-
-        // Return to previous screen
-        lv_scr_load(previous_screen);
-        lv_obj_add_flag(about_screen, LV_OBJ_FLAG_HIDDEN);
-    }
-    else
-    {
-        ESP_LOGW(TAG, "Cannot hide about screen: screen refs invalid");
-    }
+    ESP_LOGI(TAG, "Hiding about screen");
+    screen_manager_go_back();
 }
