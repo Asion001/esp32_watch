@@ -60,9 +60,9 @@
 
 ### Settings UI
 
-- [ ] Create settings app structure (`main/apps/settings/`)
-- [ ] Main settings menu screen
-- [ ] Navigation system (back button, menu items)
+- [x] Create settings app structure (`main/apps/settings/`)
+- [x] Main settings menu screen
+- [x] Navigation system (back button, menu items)
 - [ ] Settings storage layer (NVS wrapper)
 
 ### Display Settings

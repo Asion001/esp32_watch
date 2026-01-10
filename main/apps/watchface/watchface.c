@@ -4,6 +4,7 @@
  */
 
 #include "watchface.h"
+#include "settings.h"
 #include "rtc_pcf85063.h"
 #include "pmu_axp2101.h"
 #include "sleep_manager.h"
@@ -21,6 +22,7 @@ static lv_obj_t *date_label = NULL;
 static lv_obj_t *battery_label = NULL;
 static lv_obj_t *uptime_label = NULL;
 static lv_obj_t *boot_count_label = NULL;
+static lv_obj_t *settings_button = NULL;
 static lv_timer_t *update_timer = NULL;
 
 // Save timer for periodic NVS writes
@@ -131,6 +133,22 @@ static void touch_event_cb(lv_event_t *e)
 #else
     (void)e; // Suppress unused parameter warning
 #endif
+}
+
+/**
+ * @brief Settings button event callback
+ */
+static void settings_button_event_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    
+    if (code == LV_EVENT_CLICKED)
+    {
+        ESP_LOGI(TAG, "Settings button clicked");
+        bsp_display_lock(0);
+        settings_show();
+        bsp_display_unlock();
+    }
 }
 
 /**
@@ -348,6 +366,17 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
 
     // Do initial update immediately
     watchface_timer_cb(NULL);
+
+    // Create settings button in top-left corner
+    settings_button = lv_btn_create(screen);
+    lv_obj_set_size(settings_button, 50, 50);
+    lv_obj_align(settings_button, LV_ALIGN_TOP_LEFT, 10, 10);
+    lv_obj_add_event_cb(settings_button, settings_button_event_cb, LV_EVENT_CLICKED, NULL);
+    
+    lv_obj_t *settings_icon = lv_label_create(settings_button);
+    lv_label_set_text(settings_icon, LV_SYMBOL_SETTINGS);
+    lv_obj_set_style_text_font(settings_icon, &lv_font_montserrat_20, 0);
+    lv_obj_center(settings_icon);
 
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
     // Add touch event callback to screen to reset sleep timer
