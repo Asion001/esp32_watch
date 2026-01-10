@@ -35,6 +35,15 @@ extern "C"
      */
     void watchface_update(void);
 
+    /**
+     * @brief Get watchface update timer handle
+     *
+     * Used by sleep manager to pause/resume the watchface timer
+     *
+     * @return lv_timer_t* Pointer to the update timer, or NULL if not created
+     */
+    lv_timer_t *watchface_get_timer(void);
+
 #ifdef __cplusplus
 }
 #endif

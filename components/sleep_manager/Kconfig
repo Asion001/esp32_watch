@@ -1,0 +1,66 @@
+menu "Sleep Manager Configuration"
+
+    config SLEEP_MANAGER_ENABLE
+        bool "Enable Sleep Manager"
+        default n
+        help
+            Enable automatic sleep on inactivity.
+            When enabled, the device will enter sleep mode after a period of inactivity.
+
+    config SLEEP_TIMEOUT_SECONDS
+        int "Sleep timeout (seconds)"
+        depends on SLEEP_MANAGER_ENABLE
+        default 10
+        range 5 300
+        help
+            Time in seconds before entering sleep mode due to inactivity.
+
+    config SLEEP_MANAGER_BACKLIGHT_CONTROL
+        bool "Control display backlight"
+        depends on SLEEP_MANAGER_ENABLE
+        default y
+        help
+            Turn off display backlight during sleep.
+            Disable for testing sleep without affecting display.
+
+    config SLEEP_MANAGER_LVGL_TIMER_PAUSE
+        bool "Pause LVGL timers during sleep"
+        depends on SLEEP_MANAGER_ENABLE
+        default y
+        help
+            Automatically pause all LVGL timers when entering sleep.
+            Disable to keep watchface updating in background during sleep.
+
+    config SLEEP_MANAGER_LVGL_RENDERING_CONTROL
+        bool "Disable LVGL rendering during sleep"
+        depends on SLEEP_MANAGER_ENABLE
+        default y
+        help
+            Stop LVGL from rendering frames during sleep.
+            Disable to allow LVGL to continue rendering (uses more power).
+
+    config SLEEP_MANAGER_GPIO_WAKEUP
+        bool "Enable GPIO wake-up"
+        depends on SLEEP_MANAGER_ENABLE
+        default y
+        help
+            Configure touch GPIO as wake-up source.
+            Disable to test sleep without wake-up capability.
+
+    config SLEEP_MANAGER_TOUCH_RESET_TIMER
+        bool "Reset timer on touch events"
+        depends on SLEEP_MANAGER_ENABLE
+        default y
+        help
+            Reset inactivity timer when user touches the screen.
+            Disable to test automatic sleep regardless of touch activity.
+
+    config SLEEP_MANAGER_DEBUG_LOGS
+        bool "Enable debug logging"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Enable detailed debug logs for sleep manager operations.
+            Useful for troubleshooting but increases log verbosity.
+
+endmenu

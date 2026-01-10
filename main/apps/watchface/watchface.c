@@ -6,6 +6,7 @@
 #include "watchface.h"
 #include "rtc_pcf85063.h"
 #include "pmu_axp2101.h"
+#include "sleep_manager.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
 #include <time.h>
@@ -23,6 +24,25 @@ static lv_timer_t *update_timer = NULL;
 static const char *day_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 static const char *month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+/**
+ * @brief Touch event callback to reset sleep timer
+ */
+static void touch_event_cb(lv_event_t *e)
+{
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
+    {
+        // Reset inactivity timer on any touch
+        sleep_manager_reset_timer();
+        ESP_LOGD(TAG, "Touch detected, sleep timer reset");
+    }
+#else
+    (void)e; // Suppress unused parameter warning
+#endif
+}
 
 /**
  * @brief Timer callback to update time and battery every second
@@ -161,6 +181,13 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     // Do initial update immediately
     watchface_timer_cb(NULL);
 
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
+    // Add touch event callback to screen to reset sleep timer
+    lv_obj_add_event_cb(screen, touch_event_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(screen, touch_event_cb, LV_EVENT_PRESSING, NULL);
+    ESP_LOGI(TAG, "Touch event callbacks registered for sleep timer reset");
+#endif
+
     ESP_LOGI(TAG, "Watchface created successfully");
     return screen;
 }
@@ -172,4 +199,9 @@ void watchface_update(void)
     {
         lv_timer_ready(update_timer);
     }
+}
+
+lv_timer_t *watchface_get_timer(void)
+{
+    return update_timer;
 }

@@ -4,6 +4,7 @@
  */
 
 #include "rtc_pcf85063.h"
+#include "build_time.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include <string.h>
@@ -65,19 +66,31 @@ esp_err_t rtc_init(i2c_master_bus_handle_t i2c_bus)
 
     ESP_LOGI(TAG, "RTC PCF85063 initialized");
 
-    // Check if time is valid, if not, set initial time
+    // Check if time is valid, if not, set to build time
     if (!rtc_is_valid())
     {
-        ESP_LOGW(TAG, "RTC time invalid, setting default time");
-        struct tm default_time = {
-            .tm_year = 126, // 2026 - 1900
-            .tm_mon = 0,    // January (0-11)
-            .tm_mday = 10,  // Day 10
-            .tm_hour = 12,  // 12:00
-            .tm_min = 0,
-            .tm_sec = 0,
-        };
-        rtc_write_time(&default_time);
+        ESP_LOGW(TAG, "RTC time invalid, setting to build time");
+        struct tm build_time;
+        if (get_build_time(&build_time) == 0)
+        {
+            ESP_LOGI(TAG, "Setting RTC to: %04d-%02d-%02d %02d:%02d:%02d",
+                     build_time.tm_year + 1900, build_time.tm_mon + 1, build_time.tm_mday,
+                     build_time.tm_hour, build_time.tm_min, build_time.tm_sec);
+            rtc_write_time(&build_time);
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to parse build time, using fallback");
+            struct tm default_time = {
+                .tm_year = 126, // 2026 - 1900
+                .tm_mon = 0,    // January (0-11)
+                .tm_mday = 10,  // Day 10
+                .tm_hour = 12,  // 12:00
+                .tm_min = 0,
+                .tm_sec = 0,
+            };
+            rtc_write_time(&default_time);
+        }
     }
 
     return ESP_OK;
