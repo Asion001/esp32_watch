@@ -20,7 +20,7 @@ jobs:
     - name: Setup ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
-        esp_idf_version: v5.4.0
+        esp_idf_version: release-v5.4
         target: esp32c6
     
     - name: Configure - All Features ON
@@ -60,7 +60,7 @@ jobs:
     - name: Setup ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
-        esp_idf_version: v5.4.0
+        esp_idf_version: release-v5.4
         target: esp32c6
     
     - name: Configure - Minimal Features
@@ -99,7 +99,7 @@ jobs:
     - name: Setup ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
-        esp_idf_version: v5.4.0
+        esp_idf_version: release-v5.4
         target: esp32c6
     
     - name: Build firmware (default config)
@@ -134,7 +134,7 @@ jobs:
     - name: Setup ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
-        esp_idf_version: v5.4.0
+        esp_idf_version: release-v5.4
         target: esp32c6
     
     - name: Build for analysis
