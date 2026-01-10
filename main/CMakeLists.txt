@@ -7,7 +7,8 @@ file(GLOB_RECURSE APP_SOURCES "apps/*/*.c")
 
 idf_component_register(
     SRCS main.c ${APP_SOURCES} ${LV_DEMOS_SOURCES}
-    INCLUDE_DIRS . apps apps/watchface ${LV_DEMO_DIR})
+    INCLUDE_DIRS . apps apps/watchface ${LV_DEMO_DIR}
+    REQUIRES pcf85063_rtc axp2101_pmu)
 
 idf_component_get_property(LVGL_LIB lvgl__lvgl COMPONENT_LIB)
 target_compile_options(

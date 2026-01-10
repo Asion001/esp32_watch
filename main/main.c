@@ -20,7 +20,7 @@ void app_main(void)
     // Start display subsystem
     ESP_LOGI(TAG, "Initializing display...");
     bsp_display_start();
-    
+
     // Lock LVGL for UI creation
     bsp_display_lock(0);
 
@@ -29,6 +29,6 @@ void app_main(void)
 
     // Unlock LVGL
     bsp_display_unlock();
-    
+
     ESP_LOGI(TAG, "Watch initialized successfully");
 }

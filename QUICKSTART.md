@@ -5,6 +5,7 @@
 Your ESP32-C6 watch firmware is ready with the following features:
 
 ### 🎯 Current Features
+
 - ⌚ **Big Digital Clock** - Large, readable HH:MM display using Montserrat 48 font
 - 📅 **Date Display** - Shows day of week and date below time
 - 🔋 **Battery Indicator** - Real-time battery percentage in top-right corner
@@ -16,6 +17,7 @@ Your ESP32-C6 watch firmware is ready with the following features:
 - ✅ **Auto-initialization** - Sets default time on first boot
 
 ### 📁 Project Structure
+
 ```
 esp_watch/
 ├── README.md              # Complete documentation
@@ -62,6 +64,7 @@ idf.py -p /dev/ttyUSB0 flash monitor
 ## 📝 Configuration
 
 The firmware is pre-configured with:
+
 - ✅ Montserrat 48 font (big time display)
 - ✅ Montserrat 20 font (date display)
 - ✅ Montserrat 14 font (battery indicator)
@@ -92,6 +95,7 @@ The RTC initializes with: **January 10, 2026 at 12:00:00**
 To change the time:
 
 ### Method 1: Modify Default Time (Current)
+
 Edit `main/apps/watchface/rtc_pcf85063.c`:
 
 ```c
@@ -108,6 +112,7 @@ struct tm default_time = {
 Then rebuild and reflash.
 
 ### Method 2: WiFi NTP Sync (Coming in Phase 2)
+
 - Settings app to configure WiFi
 - Automatic time sync via NTP
 - Time zone configuration
@@ -115,23 +120,27 @@ Then rebuild and reflash.
 ## 🗺️ Roadmap
 
 ### Phase 2 - Settings & WiFi (Next)
+
 - WiFi connection manager
 - NTP time synchronization
 - Brightness control
 - Time zone settings
 
 ### Phase 3 - More Apps
+
 - Stopwatch
 - Timer/countdown
 - Alarm clock
 - Sensor dashboard
 
 ### Phase 4 - Power Management
+
 - Deep sleep mode
 - Gesture wake-up
 - Battery optimization
 
 ### Phase 5 - Advanced Features
+
 - Multiple watchface styles
 - Weather display
 - Notifications
@@ -140,11 +149,13 @@ Then rebuild and reflash.
 ## 🧩 Adding Your Own App
 
 1. Create new app folder:
+
 ```bash
 mkdir -p main/apps/my_app
 ```
 
 2. Create app files:
+
 ```c
 // main/apps/my_app/my_app.h
 #ifndef MY_APP_H
@@ -163,6 +174,7 @@ lv_obj_t* my_app_create(lv_obj_t *parent) {
 ```
 
 3. Include in main.c:
+
 ```c
 #include "apps/my_app/my_app.h"
 // Use in app_main()
@@ -186,21 +198,25 @@ lv_obj_t* my_app_create(lv_obj_t *parent) {
 ## ❓ Troubleshooting
 
 ### Build fails
+
 ```bash
 idf.py fullclean
 idf.py build
 ```
 
 ### Serial port not found
+
 Check: `ls /dev/ttyUSB*` or `ls /dev/ttyACM*`
 
 ### Permission denied
+
 ```bash
 sudo usermod -a -G dialout $USER
 # Log out and back in
 ```
 
 ### Font not found error
+
 Already configured! Font is enabled in sdkconfig.
 
 ## 🎉 You're Ready!

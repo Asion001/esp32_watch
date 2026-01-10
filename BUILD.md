@@ -18,16 +18,19 @@ cd esp-idf
 ## Building the Firmware
 
 1. **Set up ESP-IDF environment** (if not using VS Code extension):
+
    ```bash
    . $HOME/esp/esp-idf/export.sh
    ```
 
 2. **Navigate to project**:
+
    ```bash
    cd /home/asion/dev/my/watch/esp_watch
    ```
 
 3. **Build**:
+
    ```bash
    idf.py build
    ```
@@ -41,6 +44,7 @@ cd esp-idf
 ## Configuration Changes
 
 The following configuration has been applied:
+
 - ✅ `CONFIG_LV_FONT_MONTSERRAT_48=y` - Large font for time display
 - ✅ `CONFIG_LV_FONT_MONTSERRAT_20=y` - Date display font
 - ✅ `CONFIG_LV_FONT_MONTSERRAT_14=y` - Battery indicator font
@@ -48,20 +52,26 @@ The following configuration has been applied:
 ## Troubleshooting
 
 ### "idf.py command not found"
+
 Solution: Source the ESP-IDF environment:
+
 ```bash
 . $HOME/esp/esp-idf/export.sh
 ```
 
 ### Build fails with font errors
+
 Solution: Clean build and rebuild:
+
 ```bash
 idf.py fullclean
 idf.py build
 ```
 
 ### Serial port permission denied
+
 Solution: Add user to dialout group:
+
 ```bash
 sudo usermod -a -G dialout $USER
 # Log out and log back in

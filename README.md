@@ -15,6 +15,7 @@ Open-source, modular smartwatch firmware for the Waveshare ESP32-C6 Touch AMOLED
 ## 🛠️ Hardware Specifications
 
 ### Core
+
 - **MCU**: ESP32-C6 (RISC-V, 160MHz)
 - **Display**: 2.06" AMOLED Touch Screen (410×502 pixels, CO5300 controller)
 - **Touch**: FT3168 capacitive touch controller
@@ -22,6 +23,7 @@ Open-source, modular smartwatch firmware for the Waveshare ESP32-C6 Touch AMOLED
 - **Bluetooth**: BLE 5.0
 
 ### Peripherals
+
 - **RTC**: PCF85063 (I2C: 0x51)
 - **PMU**: AXP2101 Power Management (I2C: 0x34)
 - **IMU**: QMI8658 6-axis accelerometer + gyroscope (I2C: 0x6A/0x6B)
@@ -29,12 +31,13 @@ Open-source, modular smartwatch firmware for the Waveshare ESP32-C6 Touch AMOLED
 - **Battery**: 400mAh LiPo (recommended)
 
 ### Pin Configuration
-| Function | Pins | Notes |
-|----------|------|-------|
-| I2C | SDA: GPIO8, SCL: GPIO7 | Shared by RTC, IMU, PMU |
-| Display QSPI | CS: GPIO5, CLK: GPIO0, DATA: GPIO1-4 | CO5300 controller |
-| Touch | RST: GPIO10, INT: GPIO15 | FT3168 |
-| LCD Reset | GPIO11 | - |
+
+| Function     | Pins                                 | Notes                   |
+| ------------ | ------------------------------------ | ----------------------- |
+| I2C          | SDA: GPIO8, SCL: GPIO7               | Shared by RTC, IMU, PMU |
+| Display QSPI | CS: GPIO5, CLK: GPIO0, DATA: GPIO1-4 | CO5300 controller       |
+| Touch        | RST: GPIO10, INT: GPIO15             | FT3168                  |
+| LCD Reset    | GPIO11                               | -                       |
 
 ## 🚀 Quick Start
 
@@ -47,25 +50,32 @@ Open-source, modular smartwatch firmware for the Waveshare ESP32-C6 Touch AMOLED
 ### Building and Flashing
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/Asion001/esp32_watch.git
    cd esp32_watch
    ```
 
 2. **Configure LVGL fonts** (enable large fonts for big clock)
+
    ```bash
    idf.py menuconfig
    ```
+
    Navigate to:
+
    ```
    Component config → LVGL configuration → Font Usage → Enable built-in fonts
    ```
+
    Enable:
+
    - `CONFIG_LV_FONT_MONTSERRAT_48` (for big time display)
    - `CONFIG_LV_FONT_MONTSERRAT_20` (for date)
    - `CONFIG_LV_FONT_MONTSERRAT_14` (for battery)
 
 3. **Build the firmware**
+
    ```bash
    idf.py build
    ```
@@ -120,6 +130,7 @@ main/apps/
 ```
 
 Each app can have:
+
 - UI components (LVGL screens)
 - Sensor/peripheral drivers
 - State management
@@ -128,29 +139,32 @@ Each app can have:
 ### Adding New Apps
 
 1. **Create app directory**
+
    ```bash
    mkdir -p main/apps/my_new_app
    ```
 
 2. **Create app files**
+
    ```c
    // main/apps/my_new_app/my_new_app.h
    #ifndef MY_NEW_APP_H
    #define MY_NEW_APP_H
-   
+
    #include "lvgl.h"
-   
+
    lv_obj_t* my_new_app_create(lv_obj_t *parent);
    void my_new_app_update(void);
-   
+
    #endif
    ```
 
 3. **Implement app logic**
+
    ```c
    // main/apps/my_new_app/my_new_app.c
    #include "my_new_app.h"
-   
+
    lv_obj_t* my_new_app_create(lv_obj_t *parent) {
        lv_obj_t *screen = lv_obj_create(parent);
        // Build your UI here
@@ -159,9 +173,10 @@ Each app can have:
    ```
 
 4. **Include in main.c**
+
    ```c
    #include "apps/my_new_app/my_new_app.h"
-   
+
    void app_main(void) {
        bsp_display_start();
        bsp_display_lock(0);
@@ -186,6 +201,7 @@ void my_sensor_init(void) {
 ```
 
 Current sensor drivers:
+
 - **RTC** (`rtc_pcf85063.c/h`) - Read/write time, validity checking
 - **PMU** (`pmu_axp2101.c/h`) - Battery voltage, percentage, charging status
 
@@ -220,6 +236,7 @@ esp_err_t pmu_is_vbus_present(bool *vbus_present);
 ## 🗺️ Roadmap
 
 ### Phase 2: Settings & WiFi Sync (Q1 2026)
+
 - ⚙️ Settings menu (brightness, sleep timeout)
 - 📡 WiFi configuration UI
 - 🌐 NTP time synchronization
@@ -227,6 +244,7 @@ esp_err_t pmu_is_vbus_present(bool *vbus_present);
 - 💾 Persistent settings storage (NVS)
 
 ### Phase 3: Additional Apps (Q2 2026)
+
 - ⏱️ Stopwatch application
 - ⏲️ Timer/countdown application
 - 🔔 Alarm clock with multiple alarms
@@ -234,6 +252,7 @@ esp_err_t pmu_is_vbus_present(bool *vbus_present);
 - 🎵 Music player controls (adapted from LVGL demo)
 
 ### Phase 4: Power Management (Q2 2026)
+
 - 😴 Deep sleep on inactivity
 - 🤚 Gesture wake-up (wrist raise detection via IMU)
 - 🔋 Battery optimization
@@ -241,6 +260,7 @@ esp_err_t pmu_is_vbus_present(bool *vbus_present);
 - ⚡ Configurable sleep timeout
 
 ### Phase 5: Advanced Features (Q3 2026)
+
 - 🎨 Multiple watchface styles (analog, digital variants)
 - 🌤️ Weather display (via WiFi API)
 - 📲 Bluetooth notifications (phone pairing)
@@ -250,11 +270,13 @@ esp_err_t pmu_is_vbus_present(bool *vbus_present);
 ## 🔗 Resources
 
 ### Hardware Documentation
+
 - [Waveshare Wiki](https://www.waveshare.com/wiki/ESP32-C6-Touch-AMOLED-2.06)
 - [Datasheets](./docs/README.md) - Local copy of all component datasheets
 - [GitHub Demos](https://github.com/waveshareteam/ESP32-C6-Touch-AMOLED-2.06)
 
 ### Software Documentation
+
 - [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/en/latest/)
 - [LVGL Documentation](https://docs.lvgl.io/)
 - [FreeRTOS Documentation](https://www.freertos.org/Documentation/RTOS_book.html)
@@ -262,6 +284,7 @@ esp_err_t pmu_is_vbus_present(bool *vbus_present);
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for:
+
 - New watchface designs
 - Additional apps
 - Bug fixes
@@ -269,6 +292,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 - Hardware optimizations
 
 ### Development Guidelines
+
 1. Follow existing code style
 2. Add comments for complex logic
 3. Test on hardware before submitting
@@ -277,6 +301,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## 📝 License
 
 This project is open source. See individual component licenses:
+
 - ESP-IDF: Apache 2.0
 - LVGL: MIT
 - Hardware datasheets: Copyright respective manufacturers
@@ -284,6 +309,7 @@ This project is open source. See individual component licenses:
 ## 👤 Author
 
 **Asion001**
+
 - GitHub: [@Asion001](https://github.com/Asion001)
 
 ## 🙏 Acknowledgments
