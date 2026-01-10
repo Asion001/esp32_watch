@@ -7,6 +7,7 @@
 #include "rtc_pcf85063.h"
 #include "pmu_axp2101.h"
 #include "sleep_manager.h"
+#include "uptime_tracker.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
 #include <time.h>
@@ -18,7 +19,13 @@ static lv_obj_t *screen = NULL;
 static lv_obj_t *time_label = NULL;
 static lv_obj_t *date_label = NULL;
 static lv_obj_t *battery_label = NULL;
+static lv_obj_t *uptime_label = NULL;
+static lv_obj_t *boot_count_label = NULL;
 static lv_timer_t *update_timer = NULL;
+
+// Save timer for periodic NVS writes
+static uint32_t save_counter = 0;
+#define SAVE_INTERVAL_SECONDS 60
 
 // Day and month name arrays
 static const char *day_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
@@ -53,6 +60,9 @@ static void watchface_timer_cb(lv_timer_t *timer)
     uint16_t voltage_mv = 0;
     uint8_t battery_percent = 0;
     bool is_charging = false;
+
+    // Update uptime counter
+    uptime_tracker_update();
 
     // Read time from RTC
     if (rtc_read_time(&time) == ESP_OK)
@@ -121,6 +131,39 @@ static void watchface_timer_cb(lv_timer_t *timer)
         lv_obj_set_style_text_color(battery_label, lv_color_hex(0x888888), 0); // Gray
         ESP_LOGW(TAG, "Failed to read battery data");
     }
+
+    // Update uptime display
+    uptime_stats_t stats;
+    if (uptime_tracker_get_stats(&stats) == ESP_OK)
+    {
+        char uptime_str[32];
+        char total_str[32];
+        
+        uptime_tracker_format_time(stats.current_uptime_sec, uptime_str, sizeof(uptime_str));
+        uptime_tracker_format_time(stats.total_uptime_sec, total_str, sizeof(total_str));
+        
+        // Display current session uptime
+        lv_label_set_text_fmt(uptime_label, "Up: %s", uptime_str);
+        
+        // Display total uptime and boot count
+        lv_label_set_text_fmt(boot_count_label, "Total: %s (Boot #%u)", total_str, stats.boot_count);
+    }
+
+    // Periodically save uptime to NVS (every 60 seconds)
+    save_counter++;
+    if (save_counter >= SAVE_INTERVAL_SECONDS)
+    {
+        save_counter = 0;
+        esp_err_t ret = uptime_tracker_save();
+        if (ret != ESP_OK)
+        {
+            ESP_LOGW(TAG, "Failed to save uptime: %s", esp_err_to_name(ret));
+        }
+        else
+        {
+            ESP_LOGD(TAG, "Uptime saved to NVS");
+        }
+    }
 }
 
 lv_obj_t *watchface_create(lv_obj_t *parent)
@@ -145,6 +188,12 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     if (axp2101_init(i2c) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to initialize PMU");
+    }
+
+    // Initialize uptime tracker
+    if (uptime_tracker_init() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize uptime tracker");
     }
 
     // Create main screen container
@@ -174,6 +223,20 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     lv_obj_set_style_text_color(battery_label, lv_color_hex(0x00FF00), 0); // Green initially
     lv_label_set_text(battery_label, "100%");
     lv_obj_align(battery_label, LV_ALIGN_TOP_RIGHT, -80, 10);
+
+    // Create uptime label - bottom left
+    uptime_label = lv_label_create(screen);
+    lv_obj_set_style_text_font(uptime_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(uptime_label, lv_color_hex(0x888888), 0); // Gray
+    lv_label_set_text(uptime_label, "Up: 0m");
+    lv_obj_align(uptime_label, LV_ALIGN_BOTTOM_LEFT, 10, -30);
+
+    // Create boot count and total uptime label - below uptime
+    boot_count_label = lv_label_create(screen);
+    lv_obj_set_style_text_font(boot_count_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(boot_count_label, lv_color_hex(0x666666), 0); // Darker gray
+    lv_label_set_text(boot_count_label, "Total: 0m (Boot #1)");
+    lv_obj_align(boot_count_label, LV_ALIGN_BOTTOM_LEFT, 10, -10);
 
     // Create update timer (1000ms = 1 second)
     update_timer = lv_timer_create(watchface_timer_cb, 1000, NULL);

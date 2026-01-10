@@ -50,12 +50,12 @@
 
 ## 🚧 Phase 2: Settings & WiFi Sync - Q1 2026
 
-**Status**: Not Started  
+**Status**: In Progress  
 **Priority**: High
 
 ### Other
-- [ ] Integrate build_time.h for compile-time RTC initialization
-- [ ] Save and show uptime to test battery consumption over time 
+- [x] Integrate build_time.h for compile-time RTC initialization
+- [x] Save and show uptime to test battery consumption over time 
 
 ### Settings UI
 
