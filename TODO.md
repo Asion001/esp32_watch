@@ -67,10 +67,10 @@
 
 ### Display Settings
 
-- [ ] Brightness adjustment slider (0-100%)
-- [ ] Brightness persistence (save to NVS)
-- [ ] Sleep timeout configuration (5-300 seconds)
-- [ ] Display timeout setting
+- [x] Brightness adjustment slider (0-100%)
+- [x] Brightness persistence (save to NVS)
+- [x] Sleep timeout configuration (5-300 seconds)
+- [x] Display timeout setting
 - [ ] Auto-brightness toggle (future with light sensor)
 
 ### WiFi Configuration

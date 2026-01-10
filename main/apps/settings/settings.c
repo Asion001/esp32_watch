@@ -4,8 +4,10 @@
  */
 
 #include "settings.h"
+#include "screens/display_settings.h"
 #include "esp_log.h"
 #include "bsp/esp-bsp.h"
+#include <string.h>
 
 static const char *TAG = "Settings";
 
@@ -41,8 +43,28 @@ static void menu_item_event_cb(lv_event_t *e)
         const char *text = lv_list_get_btn_text(main_menu_list, item);
         ESP_LOGI(TAG, "Menu item clicked: %s", text ? text : "Unknown");
         
-        // TODO: Navigate to specific settings screens
-        // For now, just log the selection
+        // Navigate to specific settings screens
+        if (text && strcmp(text, "Display") == 0)
+        {
+            bsp_display_lock(0);
+            display_settings_show();
+            bsp_display_unlock();
+        }
+        else if (text && strcmp(text, "Time & Sync") == 0)
+        {
+            ESP_LOGI(TAG, "Time & Sync settings - not yet implemented");
+            // TODO: Navigate to time settings
+        }
+        else if (text && strcmp(text, "WiFi") == 0)
+        {
+            ESP_LOGI(TAG, "WiFi settings - not yet implemented");
+            // TODO: Navigate to WiFi settings
+        }
+        else if (text && strcmp(text, "About") == 0)
+        {
+            ESP_LOGI(TAG, "About screen - not yet implemented");
+            // TODO: Navigate to about screen
+        }
     }
 }
 
