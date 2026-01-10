@@ -1,0 +1,27 @@
+# ESP-IDF build output
+build/
+sdkconfig.old
+
+# Dependencies
+dependencies.lock
+managed_components/
+
+# Python
+*.pyc
+__pycache__/
+
+# Editor/IDE
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+*.test
+
+# Logs
+*.log
