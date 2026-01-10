@@ -29,14 +29,18 @@ jobs:
     
     - name: Configure - All Features ON
       run: |
+        . $IDF_PATH/export.sh
         # Use all-features config (includes base + all optional features)
         cat sdkconfig.defaults sdkconfig.all-features > sdkconfig
     
     - name: Build firmware
-      run: idf.py build
+      run: |
+        . $IDF_PATH/export.sh
+        idf.py build
     
     - name: Check binary size
       run: |
+        . $IDF_PATH/export.sh
         idf.py size
         idf.py size-components
     
@@ -69,14 +73,18 @@ jobs:
     
     - name: Configure - Minimal Features
       run: |
+        . $IDF_PATH/export.sh
         # Use minimal config (base + disabled optional features)
         cat sdkconfig.defaults sdkconfig.minimal > sdkconfig
     
     - name: Build firmware
-      run: idf.py build
+      run: |
+        . $IDF_PATH/export.sh
+        idf.py build
     
     - name: Check binary size
       run: |
+        . $IDF_PATH/export.sh
         idf.py size
         idf.py size-components
     
@@ -107,10 +115,13 @@ jobs:
         target: esp32c6
     
     - name: Build firmware (default config)
-      run: idf.py build
+      run: |
+        . $IDF_PATH/export.sh
+        idf.py build
     
     - name: Check binary size
       run: |
+        . $IDF_PATH/export.sh
         idf.py size
         idf.py size-components
     
@@ -142,7 +153,9 @@ jobs:
         target: esp32c6
     
     - name: Build for analysis
-      run: idf.py build
+      run: |
+        . $IDF_PATH/export.sh
+        idf.py build
     
     - name: Check for common issues
       run: |
