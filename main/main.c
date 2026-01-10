@@ -9,6 +9,7 @@
 #include "apps/watchface/watchface.h"
 #include "apps/settings/settings.h"
 #include "apps/settings/screens/display_settings.h"
+#include "apps/settings/screens/about_screen.h"
 #include "sleep_manager.h"
 
 static const char *TAG = "Main";
@@ -76,6 +77,9 @@ void app_main(void)
     
     // Create display settings screen (hidden by default)
     display_settings_create(lv_screen_active());
+    
+    // Create about screen (hidden by default)
+    about_screen_create(lv_screen_active());
 
     // Unlock LVGL
     bsp_display_unlock();

@@ -102,7 +102,7 @@
 
 ### Testing & Debug
 
-- [ ] Save and show build time and version info
+- [x] Save and show build time and version info
 - [ ] Settings validation
 - [ ] WiFi connection reliability tests
 - [ ] NTP sync error handling

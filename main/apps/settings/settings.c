@@ -5,6 +5,7 @@
 
 #include "settings.h"
 #include "screens/display_settings.h"
+#include "screens/about_screen.h"
 #include "esp_log.h"
 #include "bsp/esp-bsp.h"
 #include <string.h>
@@ -62,8 +63,9 @@ static void menu_item_event_cb(lv_event_t *e)
         }
         else if (text && strcmp(text, "About") == 0)
         {
-            ESP_LOGI(TAG, "About screen - not yet implemented");
-            // TODO: Navigate to about screen
+            bsp_display_lock(0);
+            about_screen_show();
+            bsp_display_unlock();
         }
     }
 }
