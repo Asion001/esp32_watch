@@ -1,0 +1,17 @@
+menu "App: Power Management"
+    comment "Battery and charging configuration"
+    
+    config BATTERY_LOW_THRESHOLD
+        int "Battery Low Threshold (%)"
+        default 15
+        range 5 30
+        help
+            Battery percentage below which low battery warning is shown.
+    
+    config BATTERY_CRITICAL_THRESHOLD
+        int "Battery Critical Threshold (%)"
+        default 5
+        range 1 15
+        help
+            Battery percentage below which critical battery warning is shown.
+endmenu

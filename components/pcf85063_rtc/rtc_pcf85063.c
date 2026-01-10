@@ -67,6 +67,21 @@ esp_err_t rtc_init(i2c_master_bus_handle_t i2c_bus)
     ESP_LOGI(TAG, "RTC PCF85063 initialized");
 
     // Check if time is valid, if not, set to build time
+#ifdef CONFIG_RTC_FORCE_SYNC_ON_BOOT
+    ESP_LOGW(TAG, "Force sync enabled - updating RTC to build time");
+    struct tm build_time;
+    if (get_build_time(&build_time) == 0)
+    {
+        ESP_LOGI(TAG, "Setting RTC to: %04d-%02d-%02d %02d:%02d:%02d",
+                 build_time.tm_year + 1900, build_time.tm_mon + 1, build_time.tm_mday,
+                 build_time.tm_hour, build_time.tm_min, build_time.tm_sec);
+        rtc_write_time(&build_time);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to parse build time");
+    }
+#else
     if (!rtc_is_valid())
     {
         ESP_LOGW(TAG, "RTC time invalid, setting to build time");
@@ -92,6 +107,7 @@ esp_err_t rtc_init(i2c_master_bus_handle_t i2c_bus)
             rtc_write_time(&default_time);
         }
     }
+#endif
 
     return ESP_OK;
 }

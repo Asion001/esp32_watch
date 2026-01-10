@@ -1,4 +1,4 @@
-menu "Sleep Manager Configuration"
+menu "App: Sleep Manager"
 
     config SLEEP_MANAGER_ENABLE
         bool "Enable Sleep Manager"

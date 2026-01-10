@@ -1,0 +1,13 @@
+# Configuration for minimal features build (CI testing)
+# This config disables optional features to ensure graceful degradation
+
+# Sleep Manager - Disabled
+CONFIG_SLEEP_MANAGER_ENABLE=n
+CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER=n
+CONFIG_SLEEP_MANAGER_DEBUG_LOGS=n
+
+# Uptime Tracker - Keep enabled (core functionality)
+CONFIG_UPTIME_TRACKER_ENABLE=y
+
+# Compiler optimizations for size
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y

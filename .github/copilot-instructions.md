@@ -8,6 +8,25 @@ Modular smartwatch firmware for Waveshare ESP32-C6 Touch AMOLED 2.06 board. Buil
 
 **Prerequisites**: ESP-IDF v5.4.0 minimum (project uses latest I2C master driver API)
 
+## Feature Development Guidelines
+
+**ALL new features MUST follow these rules:**
+
+1. **Configurable via menuconfig**: Every feature needs a `Kconfig` file with enable/disable toggle
+2. **Conditional compilation**: Use `#ifdef CONFIG_*` guards around feature code
+3. **Stub implementations**: Provide no-op functions when feature is disabled
+4. **Always build-test**: Run `idf.py build` after ANY change to verify compilation
+5. **Test both states**: Build with feature enabled AND disabled
+
+**📖 Full Guidelines**: See [.github/copilot-feature-development.md](.github/copilot-feature-development.md) for complete feature development process.
+
+**🔧 Quick Commands**: See `Makefile` for common tasks:
+
+- `make build` - Standard build
+- `make check` - Test all configurations
+- `make test-all` - Build with all features
+- `make test-minimal` - Build with minimal features
+
 ## Build System & Commands
 
 **CRITICAL**: This is an ESP-IDF project. Always use ESP-IDF tools, never raw shell commands for builds.

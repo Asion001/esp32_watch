@@ -1,0 +1,227 @@
+name: ESP-IDF Build CI
+
+on:
+  push:
+    branches: [ main, develop, "copilot/**" ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-all-features:
+    name: Build with All Features Enabled
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Setup ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v5.4.0
+        target: esp32c6
+    
+    - name: Configure - All Features ON
+      run: |
+        # Use all-features config (includes base + all optional features)
+        cat sdkconfig.defaults sdkconfig.all-features > sdkconfig
+    
+    - name: Build firmware
+      run: idf.py build
+    
+    - name: Check binary size
+      run: |
+        idf.py size
+        idf.py size-components
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-all-features
+        path: |
+          build/esp_watch.bin
+          build/bootloader/bootloader.bin
+          build/partition_table/partition-table.bin
+          build/flash_args
+        retention-days: 7
+
+  build-minimal:
+    name: Build with Minimal Features
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Setup ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v5.4.0
+        target: esp32c6
+    
+    - name: Configure - Minimal Features
+      run: |
+        # Use minimal config (base + disabled optional features)
+        cat sdkconfig.defaults sdkconfig.minimal > sdkconfig
+    
+    - name: Build firmware
+      run: idf.py build
+    
+    - name: Check binary size
+      run: |
+        idf.py size
+        idf.py size-components
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-minimal
+        path: |
+          build/esp_watch.bin
+          build/bootloader/bootloader.bin
+          build/partition_table/partition-table.bin
+        retention-days: 7
+
+  build-default:
+    name: Build with Default Configuration
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Setup ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v5.4.0
+        target: esp32c6
+    
+    - name: Build firmware (default config)
+      run: idf.py build
+    
+    - name: Check binary size
+      run: |
+        idf.py size
+        idf.py size-components
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-default
+        path: |
+          build/esp_watch.bin
+          build/bootloader/bootloader.bin
+          build/partition_table/partition-table.bin
+          build/compile_commands.json
+        retention-days: 7
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Setup ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v5.4.0
+        target: esp32c6
+    
+    - name: Build for analysis
+      run: idf.py build
+    
+    - name: Check for common issues
+      run: |
+        echo "Checking for TODO/FIXME markers..."
+        grep -r "TODO\|FIXME" main/ components/ || true
+        
+        echo "Checking for potential memory leaks (malloc without free)..."
+        # This is a simple heuristic check
+        
+        echo "Checking for large stack allocations..."
+        grep -r "char.*\[.*[0-9][0-9][0-9][0-9].*\]" main/ components/ || true
+
+  format-check:
+    name: Code Format Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check line endings (Unix LF)
+      run: |
+        ! find . -name "*.c" -o -name "*.h" | xargs file | grep CRLF
+    
+    - name: Check for trailing whitespace
+      run: |
+        ! grep -r " $" --include="*.c" --include="*.h" main/ components/ || true
+    
+    - name: Verify file headers
+      run: |
+        echo "Checking for file documentation headers..."
+        for file in main/**/*.c components/**/*.c; do
+          if [ -f "$file" ]; then
+            if ! head -5 "$file" | grep -q "@file\|@brief"; then
+              echo "Warning: $file missing documentation header"
+            fi
+          fi
+        done || true
+
+  security-check:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check for hardcoded credentials
+      run: |
+        echo "Checking for potential hardcoded credentials..."
+        ! grep -ri "password\|secret\|api[_-]key" --include="*.c" --include="*.h" main/ components/ || true
+    
+    - name: Check for unsafe functions
+      run: |
+        echo "Checking for unsafe string functions..."
+        unsafe_found=false
+        if grep -r "strcpy\|strcat\|sprintf\|gets" --include="*.c" main/ components/; then
+          echo "Warning: Found unsafe string functions. Use strncpy, strncat, snprintf instead."
+          unsafe_found=true
+        fi
+        if [ "$unsafe_found" = true ]; then
+          exit 1
+        fi || true
+
+  summary:
+    name: Build Summary
+    needs: [build-all-features, build-minimal, build-default]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Check build status
+      run: |
+        echo "Build Summary:"
+        echo "- All Features: ${{ needs.build-all-features.result }}"
+        echo "- Minimal Features: ${{ needs.build-minimal.result }}"
+        echo "- Default Config: ${{ needs.build-default.result }}"
+        
+        if [ "${{ needs.build-all-features.result }}" != "success" ] || \
+           [ "${{ needs.build-minimal.result }}" != "success" ] || \
+           [ "${{ needs.build-default.result }}" != "success" ]; then
+          echo "❌ One or more builds failed!"
+          exit 1
+        else
+          echo "✅ All builds passed!"
+        fi

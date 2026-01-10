@@ -1,0 +1,18 @@
+menu "App: Display Configuration"
+    comment "Watchface and UI settings"
+    
+    config WATCHFACE_UPDATE_INTERVAL_MS
+        int "Watchface Update Interval (ms)"
+        default 1000
+        range 100 5000
+        help
+            How often to update the watchface display.
+            Lower values = smoother updates but higher power consumption.
+    
+    config DISPLAY_TIMEOUT_MS
+        int "Display Timeout (ms)"
+        default 15000
+        range 5000 300000
+        help
+            Time before display turns off due to inactivity.
+endmenu

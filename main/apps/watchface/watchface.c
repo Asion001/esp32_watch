@@ -32,6 +32,88 @@ static const char *day_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat
 static const char *month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
+// Safe area padding for round display (distance from edge to safe zone)
+#define SAFE_AREA_TOP 40
+#define SAFE_AREA_BOTTOM SAFE_AREA_TOP
+#define SAFE_AREA_HORIZONTAL 50
+
+/**
+ * @brief Widget configuration structure for UI builder
+ */
+typedef struct
+{
+    lv_obj_t **obj_ptr;       // Pointer to store created object
+    const lv_font_t *font;    // Font to use
+    uint32_t color;           // Text color (hex)
+    const char *initial_text; // Initial text to display
+    lv_align_t align;         // Alignment type
+    lv_coord_t width;         // Widget width (LV_SIZE_CONTENT for auto)
+    lv_coord_t height;        // Widget height (LV_SIZE_CONTENT for auto)
+    int32_t padding;          // Additional padding from safe area edge
+} widget_config_t;
+
+/**
+ * @brief Widget configuration table
+ */
+static const widget_config_t widget_configs[] = {
+    // Time label - centered
+    {
+        .obj_ptr = &time_label,
+        .font = &lv_font_montserrat_48,
+        .color = 0xFFFFFF,
+        .initial_text = "00:00",
+        .align = LV_ALIGN_CENTER,
+        .width = LV_SIZE_CONTENT,
+        .height = LV_SIZE_CONTENT,
+        .padding = -30 // Move up slightly
+    },
+    // Date label - below time
+    {
+        .obj_ptr = &date_label,
+        .font = &lv_font_montserrat_20,
+        .color = 0x888888,
+        .initial_text = "Day, Month DD",
+        .align = LV_ALIGN_CENTER,
+        .width = LV_SIZE_CONTENT,
+        .height = LV_SIZE_CONTENT,
+        .padding = 30 // Move down slightly
+    },
+    // Battery label - top right corner
+    {
+        .obj_ptr = &battery_label,
+        .font = &lv_font_montserrat_14,
+        .color = 0x00FF00,
+        .initial_text = "100%",
+        .align = LV_ALIGN_TOP_RIGHT,
+        .width = LV_SIZE_CONTENT,
+        .height = LV_SIZE_CONTENT,
+        .padding = 0 // Use default safe area
+    },
+    // Uptime label - bottom left
+    {
+        .obj_ptr = &uptime_label,
+        .font = &lv_font_montserrat_14,
+        .color = 0x888888,
+        .initial_text = "Up: 0m",
+        .align = LV_ALIGN_BOTTOM_LEFT,
+        .width = LV_SIZE_CONTENT,
+        .height = LV_SIZE_CONTENT,
+        .padding = 0 // Use default safe area
+    },
+    // Boot count label - bottom left (below uptime)
+    {
+        .obj_ptr = &boot_count_label,
+        .font = &lv_font_montserrat_14,
+        .color = 0x666666,
+        .initial_text = "Total: 0m (Boot #1)",
+        .align = LV_ALIGN_BOTTOM_LEFT,
+        .width = LV_SIZE_CONTENT,
+        .height = LV_SIZE_CONTENT,
+        .padding = 20 // Additional padding below uptime label
+    }};
+
+#define WIDGET_COUNT (sizeof(widget_configs) / sizeof(widget_configs[0]))
+
 /**
  * @brief Touch event callback to reset sleep timer
  */
@@ -138,13 +220,13 @@ static void watchface_timer_cb(lv_timer_t *timer)
     {
         char uptime_str[32];
         char total_str[32];
-        
+
         uptime_tracker_format_time(stats.current_uptime_sec, uptime_str, sizeof(uptime_str));
         uptime_tracker_format_time(stats.total_uptime_sec, total_str, sizeof(total_str));
-        
+
         // Display current session uptime
         lv_label_set_text_fmt(uptime_label, "Up: %s", uptime_str);
-        
+
         // Display total uptime and boot count
         lv_label_set_text_fmt(boot_count_label, "Total: %s (Boot #%u)", total_str, stats.boot_count);
     }
@@ -203,40 +285,63 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     lv_obj_set_style_border_width(screen, 0, 0);
     lv_obj_set_style_pad_all(screen, 0, 0);
 
-    // Create BIG time label (HH:MM) - centered
-    time_label = lv_label_create(screen);
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(time_label, lv_color_white(), 0);
-    lv_label_set_text(time_label, "00:00");
-    lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -30);
+    // Build all widgets from configuration table
+    for (size_t i = 0; i < WIDGET_COUNT; i++)
+    {
+        const widget_config_t *config = &widget_configs[i];
 
-    // Create date label - below time
-    date_label = lv_label_create(screen);
-    lv_obj_set_style_text_font(date_label, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(date_label, lv_color_hex(0x888888), 0); // Gray
-    lv_label_set_text(date_label, "Day, Month DD");
-    lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 30);
+        // Create label
+        lv_obj_t *label = lv_label_create(screen);
 
-    // Create battery indicator - top right corner
-    battery_label = lv_label_create(screen);
-    lv_obj_set_style_text_font(battery_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(battery_label, lv_color_hex(0x00FF00), 0); // Green initially
-    lv_label_set_text(battery_label, "100%");
-    lv_obj_align(battery_label, LV_ALIGN_TOP_RIGHT, -80, 10);
+        // Set size
+        lv_obj_set_size(label, config->width, config->height);
 
-    // Create uptime label - bottom left
-    uptime_label = lv_label_create(screen);
-    lv_obj_set_style_text_font(uptime_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(uptime_label, lv_color_hex(0x888888), 0); // Gray
-    lv_label_set_text(uptime_label, "Up: 0m");
-    lv_obj_align(uptime_label, LV_ALIGN_BOTTOM_LEFT, 10, -30);
+        // Apply styling
+        lv_obj_set_style_text_font(label, config->font, 0);
+        lv_obj_set_style_text_color(label, lv_color_hex(config->color), 0);
 
-    // Create boot count and total uptime label - below uptime
-    boot_count_label = lv_label_create(screen);
-    lv_obj_set_style_text_font(boot_count_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(boot_count_label, lv_color_hex(0x666666), 0); // Darker gray
-    lv_label_set_text(boot_count_label, "Total: 0m (Boot #1)");
-    lv_obj_align(boot_count_label, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+        // Set initial text
+        lv_label_set_text(label, config->initial_text);
+
+        // Calculate position based on alignment and safe area
+        int32_t x_offset = 0;
+        int32_t y_offset = 0;
+
+        switch (config->align)
+        {
+        case LV_ALIGN_TOP_LEFT:
+            x_offset = SAFE_AREA_HORIZONTAL;
+            y_offset = SAFE_AREA_TOP;
+            break;
+        case LV_ALIGN_TOP_RIGHT:
+            x_offset = -SAFE_AREA_HORIZONTAL;
+            y_offset = SAFE_AREA_TOP;
+            break;
+        case LV_ALIGN_BOTTOM_LEFT:
+            x_offset = SAFE_AREA_HORIZONTAL;
+            y_offset = -SAFE_AREA_BOTTOM;
+            break;
+        case LV_ALIGN_BOTTOM_RIGHT:
+            x_offset = -SAFE_AREA_HORIZONTAL;
+            y_offset = -SAFE_AREA_BOTTOM;
+            break;
+        case LV_ALIGN_CENTER:
+        default:
+            // Center alignment uses padding directly as offset
+            x_offset = 0;
+            y_offset = 0;
+            break;
+        }
+
+        // Add custom padding (can be used for stacking or fine-tuning)
+        y_offset += config->padding;
+
+        // Position widget
+        lv_obj_align(label, config->align, x_offset, y_offset);
+
+        // Store reference
+        *(config->obj_ptr) = label;
+    }
 
     // Create update timer (1000ms = 1 second)
     update_timer = lv_timer_create(watchface_timer_cb, 1000, NULL);

@@ -1,0 +1,6 @@
+# Include component-specific configurations
+rsource "components/axp2101_pmu/Kconfig"
+rsource "components/pcf85063_rtc/Kconfig"
+rsource "components/sleep_manager/Kconfig"
+rsource "components/uptime_tracker/Kconfig"
+rsource "main/Kconfig"

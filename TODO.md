@@ -54,6 +54,7 @@
 **Priority**: High
 
 ### Other
+
 - [x] Integrate build_time.h for compile-time RTC initialization
 - [x] Save and show uptime to test battery consumption over time 
 
@@ -101,6 +102,7 @@
 
 ### Testing & Debug
 
+- [ ] Save and show build time and version info
 - [ ] Settings validation
 - [ ] WiFi connection reliability tests
 - [ ] NTP sync error handling

@@ -1,0 +1,27 @@
+menu "App: Uptime Tracker"
+
+    config UPTIME_TRACKER_ENABLE
+        bool "Enable Uptime Tracker"
+        default y
+        help
+            Enable persistent uptime tracking with NVS storage.
+            Tracks current session uptime and total uptime across reboots.
+
+    config UPTIME_TRACKER_SAVE_INTERVAL_SEC
+        int "Save interval (seconds)"
+        depends on UPTIME_TRACKER_ENABLE
+        default 60
+        range 10 3600
+        help
+            How often to save uptime data to NVS (in seconds).
+            Lower values = more frequent saves but more flash wear.
+            Higher values = less flash wear but more data loss on unexpected shutdown.
+
+    config UPTIME_TRACKER_DEBUG_LOGS
+        bool "Enable Debug Logs"
+        depends on UPTIME_TRACKER_ENABLE
+        default n
+        help
+            Enable verbose debug logging for Uptime Tracker.
+
+endmenu

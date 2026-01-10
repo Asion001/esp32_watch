@@ -1,0 +1,14 @@
+menu "App: RTC Configuration"
+
+    config RTC_FORCE_SYNC_ON_BOOT
+        bool "Force sync RTC to build time on every boot"
+        default n
+        help
+            When enabled, RTC will be updated to build time on every boot.
+            Useful during development to sync time with your computer.
+            Disable in production to preserve RTC time across reboots.
+            
+            During development, enable this so every rebuild automatically
+            syncs your watch to your computer's time.
+
+endmenu
