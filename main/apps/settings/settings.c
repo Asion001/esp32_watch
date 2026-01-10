@@ -101,28 +101,32 @@ static void create_main_menu(lv_obj_t *parent)
     lv_obj_set_style_border_width(main_menu_list, 1, 0);
     lv_obj_set_style_border_color(main_menu_list, lv_color_hex(0x444444), 0);
 
-    // Add menu items
+    // Add menu items with larger size for easier touch
     lv_obj_t *item;
     
     // Display settings
     item = lv_list_add_btn(main_menu_list, LV_SYMBOL_EYE_OPEN, "Display");
     lv_obj_add_event_cb(item, menu_item_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_text_font(item, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(item, &lv_font_montserrat_20, 0);
+    lv_obj_set_height(item, 60);  // Larger height for easier touch
     
     // Time settings
     item = lv_list_add_btn(main_menu_list, LV_SYMBOL_REFRESH, "Time & Sync");
     lv_obj_add_event_cb(item, menu_item_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_text_font(item, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(item, &lv_font_montserrat_20, 0);
+    lv_obj_set_height(item, 60);
     
     // WiFi settings
     item = lv_list_add_btn(main_menu_list, LV_SYMBOL_WIFI, "WiFi");
     lv_obj_add_event_cb(item, menu_item_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_text_font(item, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(item, &lv_font_montserrat_20, 0);
+    lv_obj_set_height(item, 60);
     
     // About / System info
     item = lv_list_add_btn(main_menu_list, LV_SYMBOL_SETTINGS, "About");
     lv_obj_add_event_cb(item, menu_item_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_text_font(item, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(item, &lv_font_montserrat_20, 0);
+    lv_obj_set_height(item, 60);
 
     ESP_LOGI(TAG, "Main menu created");
 }

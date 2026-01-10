@@ -125,6 +125,7 @@ lv_obj_t *display_settings_create(lv_obj_t *parent)
     display_settings_screen = lv_obj_create(parent);
     lv_obj_set_size(display_settings_screen, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_bg_color(display_settings_screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(display_settings_screen, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(display_settings_screen, 0, 0);
     lv_obj_set_style_pad_all(display_settings_screen, 10, 0);
     
@@ -209,12 +210,12 @@ void display_settings_show(void)
         // Save reference to previous screen
         previous_screen = lv_scr_act();
         
-        // Apply current brightness
-        apply_brightness(current_brightness);
-        
-        // Show settings screen
+        // Show settings screen first
         lv_obj_clear_flag(display_settings_screen, LV_OBJ_FLAG_HIDDEN);
         lv_scr_load(display_settings_screen);
+        
+        // Apply current brightness (after screen is visible)
+        apply_brightness(current_brightness);
     }
     else
     {

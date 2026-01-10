@@ -136,13 +136,24 @@ static void touch_event_cb(lv_event_t *e)
 #endif
 
 /**
- * @brief Settings button event callback
+ * @brief Settings gesture/button event callback
  */
 static void settings_button_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-
-    if (code == LV_EVENT_CLICKED)
+    
+    if (code == LV_EVENT_GESTURE)
+    {
+        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        if (dir == LV_DIR_BOTTOM)
+        {
+            ESP_LOGI(TAG, "Swipe down gesture detected - opening settings");
+            bsp_display_lock(0);
+            settings_show();
+            bsp_display_unlock();
+        }
+    }
+    else if (code == LV_EVENT_CLICKED)
     {
         ESP_LOGI(TAG, "Settings button clicked");
         bsp_display_lock(0);
@@ -367,16 +378,9 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     // Do initial update immediately
     watchface_timer_cb(NULL);
 
-    // Create settings button in top-left corner
-    settings_button = lv_btn_create(screen);
-    lv_obj_set_size(settings_button, 50, 50);
-    lv_obj_align(settings_button, LV_ALIGN_TOP_LEFT, 10, 10);
-    lv_obj_add_event_cb(settings_button, settings_button_event_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t *settings_icon = lv_label_create(settings_button);
-    lv_label_set_text(settings_icon, LV_SYMBOL_SETTINGS);
-    lv_obj_set_style_text_font(settings_icon, &lv_font_montserrat_20, 0);
-    lv_obj_center(settings_icon);
+    // Add swipe gesture to open settings (swipe down from top)
+    lv_obj_add_event_cb(screen, settings_button_event_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_clear_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
     // Add touch event callback to screen to reset sleep timer
