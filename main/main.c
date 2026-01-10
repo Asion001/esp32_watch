@@ -9,17 +9,26 @@
 #include "lvgl.h"
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
-#include "lv_demos.h"
+#include "apps/watchface/watchface.h"
+
+static const char *TAG = "Main";
 
 void app_main(void)
 {
+    ESP_LOGI(TAG, "Starting ESP32-C6 Watch Firmware");
 
+    // Start display subsystem
+    ESP_LOGI(TAG, "Initializing display...");
     bsp_display_start();
+    
+    // Lock LVGL for UI creation
     bsp_display_lock(0);
 
-    lv_demo_music();
-    // lv_demo_benchmark();
-    // lv_demo_widgets();
+    // Create watchface on active screen
+    watchface_create(lv_screen_active());
 
+    // Unlock LVGL
     bsp_display_unlock();
+    
+    ESP_LOGI(TAG, "Watch initialized successfully");
 }
