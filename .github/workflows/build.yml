@@ -195,7 +195,7 @@ jobs:
       run: |
         echo "Checking for unsafe string functions..."
         unsafe_found=false
-        if grep -r "strcpy\|strcat\|sprintf\|gets" --include="*.c" main/ components/; then
+        if grep -rw "strcpy\|strcat\|sprintf\|gets" --include="*.c" main/ components/; then
           echo "Warning: Found unsafe string functions. Use strncpy, strncat, snprintf instead."
           unsafe_found=true
         fi
