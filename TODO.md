@@ -63,7 +63,7 @@
 - [x] Create settings app structure (`main/apps/settings/`)
 - [x] Main settings menu screen
 - [x] Navigation system (back button, menu items)
-- [ ] Settings storage layer (NVS wrapper)
+- [x] Settings storage layer (NVS wrapper)
 
 ### Display Settings
 
