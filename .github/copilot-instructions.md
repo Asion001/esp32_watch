@@ -76,7 +76,20 @@ Location: `main/apps/<app_name>/`
 1. Create `main/apps/my_app/` directory
 2. Implement `my_app_create(lv_obj_t *parent)` function
 3. Include in `main/main.c` and call in `app_main()`
-4. No CMake changes needed (auto-discovered)
+4. **Update CMakeLists.txt**: Add `apps/my_app` to `INCLUDE_DIRS` and any new component dependencies to `REQUIRES`
+   - Example: If app needs settings, add `apps/settings` to includes and `settings_storage` to requires
+
+**CMake Configuration** (`main/CMakeLists.txt`):
+2_c6_touch_amoled_2_06 /home/asion/dev/my/watch/esp_watch/managed_components/waveshare__esp_lcd_sh8601 /home/asion/dev/src/esp/v5.5.2/esp-idf/compon
+```cmake
+idf_component_register(
+    SRCS main.c ${APP_SOURCES} ${LV_DEMOS_SOURCES}
+    INCLUDE_DIRS . apps apps/watchface apps/settings ${LV_DEMO_DIR}
+    REQUIRES pcf85063_rtc axp2101_pmu sleep_manager uptime_tracker settings_storage)
+```
+
+- `INCLUDE_DIRS`: Add each app subdirectory that has headers other apps need to include
+- `REQUIRES`: Add all component dependencies (drivers and storage components)
 
 ### LVGL Threading Model
 
