@@ -170,6 +170,16 @@ esp_err_t wifi_manager_init(void) {
   // Start WiFi
   ESP_ERROR_CHECK(esp_wifi_start());
 
+  // Set WiFi country code (required for scanning to work properly)
+  wifi_country_t country = {
+      .cc = "US",                        // United States
+      .schan = 1,                        // Start channel
+      .nchan = 11,                       // Number of channels (1-11)
+      .policy = WIFI_COUNTRY_POLICY_AUTO // Auto channel selection
+  };
+  ESP_ERROR_CHECK(esp_wifi_set_country(&country));
+  ESP_LOGI(TAG, "WiFi country set to US (channels 1-11)");
+
   wifi_mgr.initialized = true;
   wifi_mgr.state = WIFI_STATE_DISCONNECTED;
   wifi_mgr.retry_count = 0;
@@ -234,20 +244,27 @@ esp_err_t wifi_manager_scan_start(void) {
 
   ESP_LOGI(TAG, "Starting WiFi scan");
 
+  // Disconnect from AP before scanning if currently connected
+  if (wifi_mgr.state == WIFI_STATE_CONNECTED) {
+    ESP_LOGI(TAG, "Disconnecting before scan");
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(100)); // Wait for disconnect
+  }
+
   // Clear previous scan results
   wifi_mgr.scan_count = 0;
   xEventGroupClearBits(wifi_mgr.event_group, WIFI_SCAN_DONE_BIT);
 
   wifi_manager_set_state(WIFI_STATE_SCANNING);
 
-  // Start scan (NULL = default config: all channels, show all APs)
+  // Start scan with increased scan times for better AP detection
   wifi_scan_config_t scan_config = {.ssid = NULL,
                                     .bssid = NULL,
                                     .channel = 0, // Scan all channels
                                     .show_hidden = false,
                                     .scan_type = WIFI_SCAN_TYPE_ACTIVE,
-                                    .scan_time.active.min = 100,
-                                    .scan_time.active.max = 300};
+                                    .scan_time.active.min = 300, // Increased from 100ms
+                                    .scan_time.active.max = 500}; // Increased from 300ms
 
   esp_err_t ret = esp_wifi_scan_start(&scan_config, false); // Non-blocking
   if (ret != ESP_OK) {
