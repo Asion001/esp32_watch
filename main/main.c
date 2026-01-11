@@ -4,11 +4,13 @@
 #include "esp_err.h"
 #include "esp_check.h"
 #include "esp_system.h"
+#include "nvs_flash.h"
 #include "lvgl.h"
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
 #include "driver/gpio.h"
 #include "screen_manager.h"
+#include "settings_storage.h"
 #include "apps/watchface/watchface.h"
 #include "apps/settings/settings.h"
 #include "apps/settings/screens/display_settings.h"
@@ -126,19 +128,38 @@ void app_main(void)
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "Starting ESP32-C6 Watch Firmware");
 
+    // Initialize NVS flash (required by WiFi driver and settings storage)
+    ESP_LOGI(TAG, "Initializing NVS...");
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_LOGI(TAG, "NVS partition needs erasing, erasing...");
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    // Initialize settings storage (needs NVS, used by WiFi manager for credentials)
+    ESP_LOGI(TAG, "Initializing settings storage...");
+    ret = settings_storage_init();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize settings storage: %s", esp_err_to_name(ret));
+    }
+
     // Start display subsystem
     ESP_LOGI(TAG, "Initializing display...");
     bsp_display_start();
 
     // Initialize screen manager
     ESP_LOGI(TAG, "Initializing screen manager...");
-    esp_err_t ret = screen_manager_init();
+    ret = screen_manager_init();
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to initialize screen manager: %s", esp_err_to_name(ret));
     }
 
-    // Initialize WiFi manager
+    // Initialize WiFi manager (needs NVS and settings_storage to be initialized first)
     ESP_LOGI(TAG, "Initializing WiFi manager...");
     ret = wifi_manager_init();
     if (ret != ESP_OK)
