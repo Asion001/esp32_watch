@@ -42,6 +42,13 @@ extern "C"
      */
     void settings_hide(void);
 
+    /**
+     * @brief Get the settings screen object
+     *
+     * @return lv_obj_t* Pointer to settings screen, or NULL if not created
+     */
+    lv_obj_t *settings_get_screen(void);
+
 #ifdef __cplusplus
 }
 #endif

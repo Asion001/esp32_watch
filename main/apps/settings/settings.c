@@ -153,3 +153,8 @@ void settings_hide(void)
     screen_manager_go_back();
     bsp_display_unlock();
 }
+
+lv_obj_t *settings_get_screen(void)
+{
+    return settings_screen;
+}

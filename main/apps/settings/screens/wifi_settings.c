@@ -7,6 +7,7 @@
 #include "wifi_scan.h"
 #include "wifi_manager.h"
 #include "screen_manager.h"
+#include "../settings.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
 #include <string.h>
@@ -219,7 +220,10 @@ static const char *get_signal_indicator(int8_t rssi) {
 
 static void back_button_event_cb(lv_event_t *e) {
     ESP_LOGI(TAG, "Back button pressed");
-    screen_manager_show_settings();
+    lv_obj_t *settings = settings_get_screen();
+    if (settings) {
+        screen_manager_show(settings);
+    }
 }
 
 static void scan_button_event_cb(lv_event_t *e) {
@@ -260,7 +264,7 @@ void wifi_settings_show(void) {
     update_connection_info();
     
     // Show screen
-    screen_manager_show_wifi_settings();
+    screen_manager_show(wifi_settings_screen);
 }
 
 void wifi_settings_update_status(void) {
