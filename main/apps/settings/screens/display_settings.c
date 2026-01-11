@@ -118,7 +118,7 @@ lv_obj_t *display_settings_create(lv_obj_t *parent)
         .title = "Display",
         .anim_type = SCREEN_ANIM_HORIZONTAL,
         .hide_callback = display_settings_hide,
-        .has_gesture_hint = true};
+    };
 
     display_settings_screen = screen_manager_create(&config);
     if (!display_settings_screen)

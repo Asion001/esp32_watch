@@ -210,8 +210,7 @@ esp_err_t axp2101_is_vbus_present(bool *vbus_present)
     }
 
     // Check VBUS present bit (bit 5 in status register)
-    // NOTE: Logic appears to be inverted - bit is 0 when VBUS present
-    *vbus_present = (status & 0x20) == 0;
+    *vbus_present = (status & 0x20) != 0;
 
     return ESP_OK;
 }

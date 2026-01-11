@@ -151,16 +151,12 @@ esp_err_t sleep_manager_init(void)
     // Boot button connects to ground when pressed
 
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
-    // Configure touch GPIO as input with pull-up (touch INT is active-low)
-    gpio_config_t touch_conf = {
-        .pin_bit_mask = (1ULL << TOUCH_INT_GPIO),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE};
-    gpio_config(&touch_conf);
+    // NOTE: Do NOT reconfigure GPIO15 - the BSP/touch driver already configured it!
+    // We only need to enable wake-up capability on the existing configuration.
+    // Reconfiguring it here would break the touch controller's interrupt handling.
 
     // Enable GPIO wakeup on touch (wake on LOW level - touch detected)
+    // This adds wake-up capability without changing the existing GPIO configuration
     esp_err_t ret = gpio_wakeup_enable(TOUCH_INT_GPIO, GPIO_INTR_LOW_LEVEL);
     if (ret != ESP_OK)
     {
@@ -292,6 +288,9 @@ esp_err_t sleep_manager_wake(void)
 
     // Wake up display
     display_wake();
+
+    // Lock LVGL before modifying timers
+    bsp_display_lock(0);
 
 #ifdef CONFIG_SLEEP_MANAGER_LVGL_RENDERING_CONTROL
     // Re-enable LVGL rendering

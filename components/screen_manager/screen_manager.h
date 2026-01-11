@@ -36,7 +36,6 @@ extern "C"
         const char *title;            /*!< Screen title (NULL for no title) */
         screen_anim_type_t anim_type; /*!< Animation type for transitions */
         void (*hide_callback)(void);  /*!< Callback when screen should hide */
-        bool has_gesture_hint;        /*!< Show gesture hint bar at top */
     } screen_config_t;
 
     /**

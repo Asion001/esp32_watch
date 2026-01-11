@@ -86,7 +86,7 @@ menu "App: Sleep Manager"
     config SLEEP_MANAGER_DEBUG_LOGS
         bool "Enable debug logging"
         depends on SLEEP_MANAGER_ENABLE
-        default nCONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB
+        default n
         help
             Enable detailed debug logs for sleep manager operations.
             Useful for troubleshooting but increases log verbosity.

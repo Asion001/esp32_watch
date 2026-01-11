@@ -89,7 +89,7 @@ lv_obj_t *about_screen_create(lv_obj_t *parent)
         .title = "About",
         .anim_type = SCREEN_ANIM_HORIZONTAL,
         .hide_callback = about_screen_hide,
-        .has_gesture_hint = true};
+    };
 
     about_screen = screen_manager_create(&config);
     if (!about_screen)

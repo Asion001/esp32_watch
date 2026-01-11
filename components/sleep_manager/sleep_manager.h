@@ -22,6 +22,9 @@ extern "C"
 {
 #endif
 
+/** Boot button GPIO (hardware button wake source) */
+#define BOOT_BUTTON_GPIO (9)
+
 // Only compile if sleep manager is enabled
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
 
@@ -30,9 +33,6 @@ extern "C"
 
 /** Touch interrupt GPIO (FT3168 INT pin) */
 #define TOUCH_INT_GPIO (15)
-
-/** Boot button GPIO (hardware button wake source) */
-#define BOOT_BUTTON_GPIO (9)
 
     /**
      * @brief Initialize sleep manager

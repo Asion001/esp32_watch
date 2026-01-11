@@ -6,6 +6,7 @@
 #include "settings.h"
 #include "screen_manager.h"
 #include "screens/display_settings.h"
+#include "screens/system_settings.h"
 #include "screens/about_screen.h"
 #include "esp_log.h"
 #include "bsp/esp-bsp.h"
@@ -60,6 +61,10 @@ static void menu_item_event_cb(lv_event_t *e)
     {
         display_settings_show();
     }
+    else if (strcmp(text, "System") == 0)
+    {
+        system_settings_show();
+    }
     else if (strcmp(text, "Time & Sync") == 0)
     {
         ESP_LOGI(TAG, "Time & Sync settings - not yet implemented");
@@ -93,9 +98,10 @@ static void create_main_menu(lv_obj_t *parent)
 
     // Add menu items
     add_menu_item(LV_SYMBOL_EYE_OPEN, "Display");
+    add_menu_item(LV_SYMBOL_SETTINGS, "System");
     add_menu_item(LV_SYMBOL_REFRESH, "Time & Sync");
     add_menu_item(LV_SYMBOL_WIFI, "WiFi");
-    add_menu_item(LV_SYMBOL_SETTINGS, "About");
+    add_menu_item(LV_SYMBOL_LIST, "About");
 
     ESP_LOGI(TAG, "Main menu created");
 }
@@ -109,7 +115,7 @@ lv_obj_t *settings_create(lv_obj_t *parent)
         .title = "Settings",
         .anim_type = SCREEN_ANIM_VERTICAL,
         .hide_callback = settings_hide,
-        .has_gesture_hint = true};
+    };
 
     settings_screen = screen_manager_create(&config);
     if (!settings_screen)
