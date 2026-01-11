@@ -10,12 +10,20 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
-#include "esp_spi_flash.h"
 #include "bsp/esp-bsp.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char *TAG = "SystemSettings";
+
+// Helper to parse flash size from config string
+static uint32_t get_flash_size_mb(void)
+{
+    const char *flash_size = CONFIG_ESPTOOLPY_FLASHSIZE;
+    uint32_t size_mb = 0;
+    sscanf(flash_size, "%uMB", &size_mb);
+    return size_mb;
+}
 
 // UI elements
 static lv_obj_t *system_settings_screen = NULL;
@@ -291,7 +299,7 @@ static void create_system_settings_ui(lv_obj_t *parent)
     size_t total_heap = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
     
     // Get flash info
-    size_t flash_size = spi_flash_get_chip_size();
+    uint32_t flash_size_mb = get_flash_size_mb();
     
     // Create storage info text
     char storage_info[256];
@@ -302,7 +310,7 @@ static void create_system_settings_ui(lv_obj_t *parent)
              (unsigned)(free_heap / 1024),
              (unsigned)(total_heap / 1024),
              (unsigned)(min_free_heap / 1024),
-             (unsigned)(flash_size / (1024 * 1024)));
+             flash_size_mb);
 
     lv_obj_t *storage_info_label = lv_label_create(container);
     lv_label_set_text(storage_info_label, storage_info);
