@@ -201,13 +201,29 @@ void app_main(void)
     // Create main tileview for watchface <-> settings navigation
     // Create a new screen for the tileview
     lv_obj_t *tileview_screen = lv_obj_create(NULL);
+    
+    // Set tileview screen background to black
+    lv_obj_set_style_bg_color(tileview_screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(tileview_screen, LV_OPA_COVER, 0);
+    
     lv_obj_t *tileview = lv_tileview_create(tileview_screen);
     lv_obj_set_size(tileview, LV_PCT(100), LV_PCT(100));
     lv_obj_clear_flag(tileview, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Set tileview background to black
+    lv_obj_set_style_bg_color(tileview, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(tileview, LV_OPA_COVER, 0);
+    
     ESP_LOGI(TAG, "Tileview created: %p on screen: %p", tileview, tileview_screen);
 
-    // Add watchface tile (row 0, col 0) - home tile, can swipe down
+    // Add watchface tile (col 0, row 0) - home tile, can swipe down
+    // For vertical scrolling: col stays 0, row changes (0 -> 1)
     lv_obj_t *watchface_tile = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_BOTTOM);
+    
+    // Set watchface tile background to black
+    lv_obj_set_style_bg_color(watchface_tile, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(watchface_tile, LV_OPA_COVER, 0);
+    
     ESP_LOGI(TAG, "Watchface tile created: %p", watchface_tile);
 
     lv_obj_t *watchface = watchface_create(watchface_tile);
@@ -216,8 +232,13 @@ void app_main(void)
         ESP_LOGI(TAG, "Watchface created on tile: %p", watchface);
     }
 
-    // Add settings tile (row 0, col 1) - can swipe up to return to watchface
+    // Add settings tile (col 0, row 1) - below watchface, can swipe up to return
     lv_obj_t *settings_tile = lv_tileview_add_tile(tileview, 0, 1, LV_DIR_TOP);
+    
+    // Set settings tile background to black
+    lv_obj_set_style_bg_color(settings_tile, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(settings_tile, LV_OPA_COVER, 0);
+    
     ESP_LOGI(TAG, "Settings tile created: %p", settings_tile);
 
     // Create settings on its tile
