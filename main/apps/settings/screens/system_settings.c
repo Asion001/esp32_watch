@@ -10,6 +10,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "safe_area.h"
 #include "screen_manager.h"
 #include "settings_storage.h"
 #include "uptime_tracker.h"
@@ -17,7 +18,8 @@
 static const char *TAG = "SystemSettings";
 
 // Helper to parse flash size from config string
-static uint32_t get_flash_size_mb(void) {
+static uint32_t get_flash_size_mb(void)
+{
   const char *flash_size = CONFIG_ESPTOOLPY_FLASHSIZE;
   uint32_t size_mb = 0;
   sscanf(flash_size, "%uMB", &size_mb);
@@ -31,15 +33,18 @@ static lv_obj_t *confirmation_msgbox = NULL;
 /**
  * @brief Factory reset yes button callback
  */
-static void factory_reset_yes_cb(lv_event_t *e) {
+static void factory_reset_yes_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_CLICKED) {
+  if (code == LV_EVENT_CLICKED)
+  {
     ESP_LOGI(TAG, "User confirmed factory reset");
 
     // Perform factory reset
     esp_err_t ret = settings_erase_all();
-    if (ret == ESP_OK) {
+    if (ret == ESP_OK)
+    {
       ESP_LOGI(TAG, "Settings erased successfully");
 
       // Also reset uptime
@@ -57,7 +62,9 @@ static void factory_reset_yes_cb(lv_event_t *e) {
       ESP_LOGI(TAG, "Restarting in 3 seconds...");
       vTaskDelay(pdMS_TO_TICKS(3000));
       esp_restart();
-    } else {
+    }
+    else
+    {
       ESP_LOGE(TAG, "Factory reset failed: %s", esp_err_to_name(ret));
 
       // Show error message
@@ -69,7 +76,8 @@ static void factory_reset_yes_cb(lv_event_t *e) {
     }
 
     // Close confirmation dialog
-    if (confirmation_msgbox) {
+    if (confirmation_msgbox)
+    {
       lv_msgbox_close(confirmation_msgbox);
       confirmation_msgbox = NULL;
     }
@@ -79,14 +87,17 @@ static void factory_reset_yes_cb(lv_event_t *e) {
 /**
  * @brief Factory reset no button callback
  */
-static void factory_reset_no_cb(lv_event_t *e) {
+static void factory_reset_no_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_CLICKED) {
+  if (code == LV_EVENT_CLICKED)
+  {
     ESP_LOGI(TAG, "User cancelled factory reset");
 
     // Close confirmation dialog
-    if (confirmation_msgbox) {
+    if (confirmation_msgbox)
+    {
       lv_msgbox_close(confirmation_msgbox);
       confirmation_msgbox = NULL;
     }
@@ -96,10 +107,12 @@ static void factory_reset_no_cb(lv_event_t *e) {
 /**
  * @brief Factory reset button callback
  */
-static void factory_reset_cb(lv_event_t *e) {
+static void factory_reset_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_CLICKED) {
+  if (code == LV_EVENT_CLICKED)
+  {
     ESP_LOGI(TAG, "Factory reset button clicked");
 
     // Create confirmation dialog
@@ -126,15 +139,18 @@ static void factory_reset_cb(lv_event_t *e) {
 /**
  * @brief Yes button callback
  */
-static void confirm_yes_cb(lv_event_t *e) {
+static void confirm_yes_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_CLICKED) {
+  if (code == LV_EVENT_CLICKED)
+  {
     ESP_LOGI(TAG, "User confirmed uptime reset");
 
     // Reset uptime
     esp_err_t ret = uptime_tracker_reset();
-    if (ret == ESP_OK) {
+    if (ret == ESP_OK)
+    {
       ESP_LOGI(TAG, "Uptime reset successful");
 
       // Show success message
@@ -143,7 +159,9 @@ static void confirm_yes_cb(lv_event_t *e) {
       lv_msgbox_add_text(success_msgbox, "Uptime counter has been reset.");
       lv_msgbox_add_close_button(success_msgbox);
       lv_obj_center(success_msgbox);
-    } else {
+    }
+    else
+    {
       ESP_LOGE(TAG, "Uptime reset failed: %s", esp_err_to_name(ret));
 
       // Show error message
@@ -155,7 +173,8 @@ static void confirm_yes_cb(lv_event_t *e) {
     }
 
     // Close confirmation dialog
-    if (confirmation_msgbox) {
+    if (confirmation_msgbox)
+    {
       lv_msgbox_close(confirmation_msgbox);
       confirmation_msgbox = NULL;
     }
@@ -165,14 +184,17 @@ static void confirm_yes_cb(lv_event_t *e) {
 /**
  * @brief No button callback
  */
-static void confirm_no_cb(lv_event_t *e) {
+static void confirm_no_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_CLICKED) {
+  if (code == LV_EVENT_CLICKED)
+  {
     ESP_LOGI(TAG, "User cancelled uptime reset");
 
     // Close confirmation dialog
-    if (confirmation_msgbox) {
+    if (confirmation_msgbox)
+    {
       lv_msgbox_close(confirmation_msgbox);
       confirmation_msgbox = NULL;
     }
@@ -182,10 +204,12 @@ static void confirm_no_cb(lv_event_t *e) {
 /**
  * @brief Reset uptime button callback
  */
-static void reset_uptime_cb(lv_event_t *e) {
+static void reset_uptime_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_CLICKED) {
+  if (code == LV_EVENT_CLICKED)
+  {
     ESP_LOGI(TAG, "Reset uptime button clicked");
 
     // Create confirmation dialog
@@ -210,11 +234,12 @@ static void reset_uptime_cb(lv_event_t *e) {
 /**
  * @brief Create system settings UI elements
  */
-static void create_system_settings_ui(lv_obj_t *parent) {
+static void create_system_settings_ui(lv_obj_t *parent)
+{
   // Create container for buttons
   lv_obj_t *container = lv_obj_create(parent);
   lv_obj_set_size(container, LV_PCT(90), LV_PCT(70));
-  lv_obj_align(container, LV_ALIGN_CENTER, 0, 20);
+  lv_obj_align(container, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 30);
   lv_obj_set_style_bg_color(container, lv_color_hex(0x1a1a1a), 0);
   lv_obj_set_style_border_width(container, 1, 0);
   lv_obj_set_style_border_color(container, lv_color_hex(0x444444), 0);
@@ -299,18 +324,28 @@ static void create_system_settings_ui(lv_obj_t *parent) {
   ESP_LOGI(TAG, "System settings UI created");
 }
 
-lv_obj_t *system_settings_create(lv_obj_t *parent) {
+lv_obj_t *system_settings_create(lv_obj_t *parent)
+{
+  // Return existing screen if already created
+  if (system_settings_screen)
+  {
+    ESP_LOGI(TAG, "System settings screen already exists, returning existing");
+    return system_settings_screen;
+  }
+
   ESP_LOGI(TAG, "Creating system settings screen");
 
   // Create screen using screen_manager
   screen_config_t config = {
       .title = "System",
+      .show_back_button = true,
       .anim_type = SCREEN_ANIM_HORIZONTAL,
       .hide_callback = system_settings_hide,
   };
 
   system_settings_screen = screen_manager_create(&config);
-  if (!system_settings_screen) {
+  if (!system_settings_screen)
+  {
     ESP_LOGE(TAG, "Failed to create system settings screen");
     return NULL;
   }
@@ -322,16 +357,21 @@ lv_obj_t *system_settings_create(lv_obj_t *parent) {
   return system_settings_screen;
 }
 
-void system_settings_show(void) {
-  if (system_settings_screen) {
+void system_settings_show(void)
+{
+  if (system_settings_screen)
+  {
     ESP_LOGI(TAG, "Showing system settings screen");
     screen_manager_show(system_settings_screen);
-  } else {
+  }
+  else
+  {
     ESP_LOGW(TAG, "System settings screen not created");
   }
 }
 
-void system_settings_hide(void) {
+void system_settings_hide(void)
+{
   ESP_LOGI(TAG, "Hiding system settings screen");
-  screen_manager_go_back();
+  // Cleanup only - screen_manager_go_back() is already handling navigation
 }

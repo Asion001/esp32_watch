@@ -6,6 +6,7 @@
 #include "display_settings.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
+#include "safe_area.h"
 #include "screen_manager.h"
 #include "settings_storage.h"
 
@@ -25,7 +26,8 @@ static int32_t current_brightness = SETTING_DEFAULT_BRIGHTNESS;
 /**
  * @brief Apply brightness to display
  */
-static void apply_brightness(int32_t brightness) {
+static void apply_brightness(int32_t brightness)
+{
   // Clamp brightness to valid range
   if (brightness < 0)
     brightness = 0;
@@ -36,9 +38,12 @@ static void apply_brightness(int32_t brightness) {
 
   // Convert percentage to BSP backlight level (0-100)
   esp_err_t ret = bsp_display_brightness_set(brightness);
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGW(TAG, "Failed to set brightness: %s", esp_err_to_name(ret));
-  } else {
+  }
+  else
+  {
     ESP_LOGD(TAG, "Brightness set to %d%%", (int)brightness);
   }
 }
@@ -46,10 +51,12 @@ static void apply_brightness(int32_t brightness) {
 /**
  * @brief Brightness slider event handler
  */
-static void brightness_slider_event_cb(lv_event_t *e) {
+static void brightness_slider_event_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_VALUE_CHANGED) {
+  if (code == LV_EVENT_VALUE_CHANGED)
+  {
     lv_obj_t *slider = lv_event_get_target(e);
     int32_t value = lv_slider_get_value(slider);
 
@@ -61,7 +68,8 @@ static void brightness_slider_event_cb(lv_event_t *e) {
 
     // Save to NVS
     esp_err_t ret = settings_set_int(SETTING_KEY_BRIGHTNESS, value);
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
       ESP_LOGW(TAG, "Failed to save brightness: %s", esp_err_to_name(ret));
     }
   }
@@ -71,10 +79,12 @@ static void brightness_slider_event_cb(lv_event_t *e) {
 /**
  * @brief Sleep timeout dropdown event handler
  */
-static void sleep_timeout_event_cb(lv_event_t *e) {
+static void sleep_timeout_event_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code == LV_EVENT_VALUE_CHANGED) {
+  if (code == LV_EVENT_VALUE_CHANGED)
+  {
     lv_obj_t *dropdown = lv_event_get_target(e);
     uint16_t selected = lv_dropdown_get_selected(dropdown);
 
@@ -86,14 +96,23 @@ static void sleep_timeout_event_cb(lv_event_t *e) {
 
     // Save to NVS
     esp_err_t ret = settings_set_int(SETTING_KEY_SLEEP_TIMEOUT, timeout);
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
       ESP_LOGW(TAG, "Failed to save sleep timeout: %s", esp_err_to_name(ret));
     }
   }
 }
 #endif // CONFIG_SLEEP_MANAGER_ENABLE
 
-lv_obj_t *display_settings_create(lv_obj_t *parent) {
+lv_obj_t *display_settings_create(lv_obj_t *parent)
+{
+  // Return existing screen if already created
+  if (display_settings_screen)
+  {
+    ESP_LOGI(TAG, "Display settings screen already exists, returning existing");
+    return display_settings_screen;
+  }
+
   ESP_LOGI(TAG, "Creating display settings screen");
 
   // Initialize settings storage if not already done
@@ -106,12 +125,14 @@ lv_obj_t *display_settings_create(lv_obj_t *parent) {
   // Create screen using screen_manager
   screen_config_t config = {
       .title = "Display",
+      .show_back_button = true,
       .anim_type = SCREEN_ANIM_HORIZONTAL,
       .hide_callback = display_settings_hide,
   };
 
   display_settings_screen = screen_manager_create(&config);
-  if (!display_settings_screen) {
+  if (!display_settings_screen)
+  {
     ESP_LOGE(TAG, "Failed to create display settings screen");
     return NULL;
   }
@@ -123,12 +144,12 @@ lv_obj_t *display_settings_create(lv_obj_t *parent) {
                         (int)current_brightness);
   lv_obj_set_style_text_font(brightness_label, &lv_font_montserrat_14, 0);
   lv_obj_set_style_text_color(brightness_label, lv_color_white(), 0);
-  lv_obj_align(brightness_label, LV_ALIGN_TOP_LEFT, 20, 60);
+  lv_obj_align(brightness_label, LV_ALIGN_TOP_LEFT, SAFE_AREA_HORIZONTAL, SAFE_AREA_TOP + 40);
 
   // Brightness slider
   brightness_slider = lv_slider_create(display_settings_screen);
   lv_obj_set_size(brightness_slider, LV_PCT(80), 20);
-  lv_obj_align(brightness_slider, LV_ALIGN_TOP_MID, 0, 90);
+  lv_obj_align(brightness_slider, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 70);
   lv_slider_set_range(brightness_slider, 0, 100);
   lv_slider_set_value(brightness_slider, current_brightness, LV_ANIM_OFF);
   lv_obj_add_event_cb(brightness_slider, brightness_slider_event_cb,
@@ -140,14 +161,14 @@ lv_obj_t *display_settings_create(lv_obj_t *parent) {
   lv_label_set_text(timeout_label, "Sleep Timeout:");
   lv_obj_set_style_text_font(timeout_label, &lv_font_montserrat_14, 0);
   lv_obj_set_style_text_color(timeout_label, lv_color_white(), 0);
-  lv_obj_align(timeout_label, LV_ALIGN_TOP_LEFT, 20, 140);
+  lv_obj_align(timeout_label, LV_ALIGN_TOP_LEFT, SAFE_AREA_HORIZONTAL, SAFE_AREA_TOP + 120);
 
   // Sleep timeout dropdown
   sleep_timeout_dropdown = lv_dropdown_create(display_settings_screen);
   lv_dropdown_set_options(sleep_timeout_dropdown,
                           "5 sec\n10 sec\n15 sec\n30 sec\n1 min\n2 min\n5 min");
   lv_obj_set_size(sleep_timeout_dropdown, LV_PCT(70), 40);
-  lv_obj_align(sleep_timeout_dropdown, LV_ALIGN_TOP_MID, 0, 170);
+  lv_obj_align(sleep_timeout_dropdown, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 150);
   lv_obj_set_style_text_font(sleep_timeout_dropdown, &lv_font_montserrat_14, 0);
   lv_obj_add_event_cb(sleep_timeout_dropdown, sleep_timeout_event_cb,
                       LV_EVENT_VALUE_CHANGED, NULL);
@@ -181,20 +202,23 @@ lv_obj_t *display_settings_create(lv_obj_t *parent) {
   return display_settings_screen;
 }
 
-void display_settings_show(void) {
-  if (display_settings_screen) {
+void display_settings_show(void)
+{
+  if (display_settings_screen)
+  {
     ESP_LOGI(TAG, "Showing display settings screen");
     bsp_display_lock(0);
     screen_manager_show(display_settings_screen);
     bsp_display_unlock();
-  } else {
+  }
+  else
+  {
     ESP_LOGW(TAG, "Display settings screen not created");
   }
 }
 
-void display_settings_hide(void) {
+void display_settings_hide(void)
+{
   ESP_LOGI(TAG, "Hiding display settings screen");
-  bsp_display_lock(0);
-  screen_manager_go_back();
-  bsp_display_unlock();
+  // Cleanup only - screen_manager_go_back() is already handling navigation
 }

@@ -16,3 +16,38 @@ menu "App: Display Configuration"
         help
             Time before display turns off due to inactivity.
 endmenu
+
+menu "App: Logging Configuration"
+    comment "Application log verbosity settings"
+
+    choice APP_LOG_LEVEL
+        prompt "Default log verbosity"
+        default APP_LOG_LEVEL_INFO
+        help
+            Specify how much output to see in logs by default.
+            Note that this setting only affects the main application.
+            Each component has its own log level setting.
+
+        config APP_LOG_LEVEL_NONE
+            bool "No output"
+        config APP_LOG_LEVEL_ERROR
+            bool "Error"
+        config APP_LOG_LEVEL_WARN
+            bool "Warning"
+        config APP_LOG_LEVEL_INFO
+            bool "Info"
+        config APP_LOG_LEVEL_DEBUG
+            bool "Debug"
+        config APP_LOG_LEVEL_VERBOSE
+            bool "Verbose"
+    endchoice
+
+    config APP_LOG_LEVEL
+        int
+        default 0 if APP_LOG_LEVEL_NONE
+        default 1 if APP_LOG_LEVEL_ERROR
+        default 2 if APP_LOG_LEVEL_WARN
+        default 3 if APP_LOG_LEVEL_INFO
+        default 4 if APP_LOG_LEVEL_DEBUG
+        default 5 if APP_LOG_LEVEL_VERBOSE
+endmenu

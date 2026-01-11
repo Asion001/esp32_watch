@@ -24,19 +24,26 @@
 
 static const char *TAG = "Main";
 
+// Store tileview reference for button handler
+static lv_obj_t *g_tileview = NULL;
+
 // WiFi status callback
-static void wifi_status_callback(wifi_state_t state, void *user_data) {
+static void wifi_status_callback(wifi_state_t state, void *user_data)
+{
   ESP_LOGI(TAG, "WiFi state changed: %d", state);
   wifi_settings_update_status();
 }
 
-// Button long press configuration
-#define BUTTON_LONG_PRESS_MS 3000 // 3 seconds for reset
+// Button press configuration
+#define BUTTON_LONG_PRESS_MS 3000     // 3 seconds for restart
+#define BUTTON_SHORT_PRESS_MAX_MS 500 // Maximum duration for short press
+#define BUTTON_DEBOUNCE_MS 300        // Ignore button presses within 300ms of last release
 
 /**
- * @brief Button monitoring task for reset functionality
+ * @brief Button monitoring task for navigation and reset functionality
  */
-static void button_monitor_task(void *pvParameters) {
+static void button_monitor_task(void *pvParameters)
+{
   ESP_LOGI(TAG, "Button monitor task started");
 
   // Configure button GPIO as input with pull-up
@@ -48,46 +55,121 @@ static void button_monitor_task(void *pvParameters) {
   gpio_config(&button_conf);
 
   uint32_t press_start_ms = 0;
+  uint32_t last_release_ms = 0;
   bool was_pressed = false;
+  bool long_press_triggered = false;
 
-  while (1) {
+  while (1)
+  {
     // Button is active-low (pressed = 0)
     bool is_pressed = (gpio_get_level(BOOT_BUTTON_GPIO) == 0);
 
-    if (is_pressed && !was_pressed) {
+    if (is_pressed && !was_pressed)
+    {
       // Button just pressed
-      press_start_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+      uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+
+      // Check debounce time
+      if (last_release_ms > 0 && (current_ms - last_release_ms) < BUTTON_DEBOUNCE_MS)
+      {
+        ESP_LOGD(TAG, "Button press ignored (debounce)");
+        // Ignore this press, it's too soon after last release
+        vTaskDelay(pdMS_TO_TICKS(50));
+        continue;
+      }
+
+      press_start_ms = current_ms;
       was_pressed = true;
+      long_press_triggered = false;
       ESP_LOGD(TAG, "Button pressed");
-    } else if (is_pressed && was_pressed) {
+    }
+    else if (is_pressed && was_pressed)
+    {
       // Button still pressed - check duration
       uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
       uint32_t press_duration = current_ms - press_start_ms;
 
-      if (press_duration >= BUTTON_LONG_PRESS_MS) {
-        ESP_LOGI(TAG, "Long press detected - resetting watch...");
+      if (press_duration >= BUTTON_LONG_PRESS_MS && !long_press_triggered)
+      {
+        ESP_LOGI(TAG, "Long press detected - restarting watch...");
+        long_press_triggered = true;
         vTaskDelay(pdMS_TO_TICKS(100)); // Small delay for log to flush
         esp_restart();
       }
-    } else if (!is_pressed && was_pressed) {
+    }
+    else if (!is_pressed && was_pressed)
+    {
       // Button released
+      uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+      uint32_t press_duration = current_ms - press_start_ms;
       was_pressed = false;
-      ESP_LOGD(TAG, "Button released");
+      last_release_ms = current_ms;
+
+      // Handle short press - navigate back/home
+      if (!long_press_triggered && press_duration < BUTTON_SHORT_PRESS_MAX_MS)
+      {
+        ESP_LOGI(TAG, "Short press detected");
+        vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to ensure log is flushed
+
+        if (!g_tileview)
+        {
+          ESP_LOGW(TAG, "Tileview not initialized");
+        }
+        else
+        {
+          ESP_LOGI(TAG, "Locking display");
+          bool lock_ok = bsp_display_lock(100); // 100ms timeout
+          ESP_LOGI(TAG, "Lock result: %d", lock_ok);
+
+          if (!lock_ok)
+          {
+            ESP_LOGW(TAG, "Failed to acquire display lock");
+          }
+          else
+          {
+            lv_obj_t *active_screen = lv_scr_act();
+            lv_obj_t *tileview_screen = lv_obj_get_parent(g_tileview);
+
+            ESP_LOGI(TAG, "Screens - active:%p tile:%p", active_screen, tileview_screen);
+
+            // Check if we're on a managed screen (not the tileview screen)
+            if (active_screen != tileview_screen)
+            {
+              // We're on a managed screen (display settings, wifi, etc)
+              ESP_LOGI(TAG, "Going back from managed screen");
+              screen_manager_go_back();
+            }
+            else
+            {
+              // We're on tileview - navigate to watchface tile (0, 0)
+              ESP_LOGI(TAG, "Returning to watchface");
+              lv_tileview_set_tile_by_index(g_tileview, 0, 0, LV_ANIM_ON);
+            }
+            bsp_display_unlock();
+            ESP_LOGI(TAG, "Display unlocked");
+          }
+        }
+      }
+
+      ESP_LOGD(TAG, "Button released (duration: %lu ms)", press_duration);
     }
 
     vTaskDelay(pdMS_TO_TICKS(50)); // Check every 50ms
   }
 }
 
-void app_main(void) {
-  esp_log_level_set("*", ESP_LOG_INFO);
+void app_main(void)
+{
+  esp_log_level_set("*", CONFIG_APP_LOG_LEVEL);
+  ESP_LOGI(TAG, "Log level set to: %d", CONFIG_APP_LOG_LEVEL);
   ESP_LOGI(TAG, "Starting ESP32-C6 Watch Firmware");
 
   // Initialize NVS flash (required by WiFi driver and settings storage)
   ESP_LOGI(TAG, "Initializing NVS...");
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+  {
     ESP_LOGI(TAG, "NVS partition needs erasing, erasing...");
     ESP_ERROR_CHECK(nvs_flash_erase());
     ret = nvs_flash_init();
@@ -98,7 +180,8 @@ void app_main(void) {
   // credentials)
   ESP_LOGI(TAG, "Initializing settings storage...");
   ret = settings_storage_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize settings storage: %s",
              esp_err_to_name(ret));
   }
@@ -110,7 +193,8 @@ void app_main(void) {
   // Initialize screen manager
   ESP_LOGI(TAG, "Initializing screen manager...");
   ret = screen_manager_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize screen manager: %s",
              esp_err_to_name(ret));
   }
@@ -119,15 +203,19 @@ void app_main(void) {
   // first)
   ESP_LOGI(TAG, "Initializing WiFi manager...");
   ret = wifi_manager_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize WiFi manager: %s",
              esp_err_to_name(ret));
-  } else {
+  }
+  else
+  {
     // Register WiFi status callback
     wifi_manager_register_callback(wifi_status_callback, NULL);
 
     // Auto-connect if credentials are saved
-    if (wifi_manager_has_credentials()) {
+    if (wifi_manager_has_credentials())
+    {
       ESP_LOGI(TAG, "Saved WiFi credentials found, attempting auto-connect...");
       wifi_manager_auto_connect();
     }
@@ -137,7 +225,8 @@ void app_main(void) {
   // Initialize sleep manager
   ESP_LOGI(TAG, "Initializing sleep manager...");
   ret = sleep_manager_init();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to initialize sleep manager: %s",
              esp_err_to_name(ret));
   }
@@ -162,11 +251,13 @@ void app_main(void) {
 
   lv_obj_t *tileview = lv_tileview_create(tileview_screen);
   lv_obj_set_size(tileview, LV_PCT(100), LV_PCT(100));
-  lv_obj_clear_flag(tileview, LV_OBJ_FLAG_SCROLLABLE);
 
   // Set tileview background to black
   lv_obj_set_style_bg_color(tileview, lv_color_black(), 0);
   lv_obj_set_style_bg_opa(tileview, LV_OPA_COVER, 0);
+
+  // Store tileview reference for button handler
+  g_tileview = tileview;
 
   ESP_LOGI(TAG, "Tileview created: %p on screen: %p", tileview,
            tileview_screen);
@@ -183,7 +274,8 @@ void app_main(void) {
   ESP_LOGI(TAG, "Watchface tile created: %p", watchface_tile);
 
   lv_obj_t *watchface = watchface_create(watchface_tile);
-  if (watchface) {
+  if (watchface)
+  {
     ESP_LOGI(TAG, "Watchface created on tile: %p", watchface);
   }
 
@@ -204,10 +296,8 @@ void app_main(void) {
   // Create sub-screens as separate screens (not tiles)
   // These are navigated to from settings menu
   // Use the default screen that BSP initialized
-  display_settings_create(default_screen);
-  system_settings_create(default_screen);
-  about_screen_create(default_screen);
-  wifi_settings_create(default_screen);
+  // NOTE: Settings screens are now created on-demand when opened
+  // to avoid navigation stack issues. Only wifi_scan needs pre-creation.
   wifi_scan_create(default_screen);
   // Note: wifi_password screen is created on-demand when needed
 

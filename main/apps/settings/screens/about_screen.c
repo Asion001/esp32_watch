@@ -10,13 +10,15 @@
 #include "esp_idf_version.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "safe_area.h"
 #include "screen_manager.h"
 #include "uptime_tracker.h"
 
 static const char *TAG = "AboutScreen";
 
 // Helper to parse flash size from config string
-static uint32_t get_flash_size_mb(void) {
+static uint32_t get_flash_size_mb(void)
+{
   const char *flash_size = CONFIG_ESPTOOLPY_FLASHSIZE;
   uint32_t size_mb = 0;
   sscanf(flash_size, "%uMB", &size_mb);
@@ -33,7 +35,8 @@ static lv_obj_t *info_label = NULL;
 /**
  * @brief Build the system information text
  */
-static void build_info_text(char *buffer, size_t buffer_size) {
+static void build_info_text(char *buffer, size_t buffer_size)
+{
   // Get chip information
   esp_chip_info_t chip_info;
   esp_chip_info(&chip_info);
@@ -76,18 +79,28 @@ static void build_info_text(char *buffer, size_t buffer_size) {
                                                          : "external");
 }
 
-lv_obj_t *about_screen_create(lv_obj_t *parent) {
+lv_obj_t *about_screen_create(lv_obj_t *parent)
+{
+  // Return existing screen if already created
+  if (about_screen)
+  {
+    ESP_LOGI(TAG, "About screen already exists, returning existing");
+    return about_screen;
+  }
+
   ESP_LOGI(TAG, "Creating about screen");
 
   // Create screen using screen_manager
   screen_config_t config = {
       .title = "About",
+      .show_back_button = true,
       .anim_type = SCREEN_ANIM_HORIZONTAL,
       .hide_callback = about_screen_hide,
   };
 
   about_screen = screen_manager_create(&config);
-  if (!about_screen) {
+  if (!about_screen)
+  {
     ESP_LOGE(TAG, "Failed to create about screen");
     return NULL;
   }
@@ -95,11 +108,13 @@ lv_obj_t *about_screen_create(lv_obj_t *parent) {
   // Create scrollable container for info
   lv_obj_t *info_container = lv_obj_create(about_screen);
   lv_obj_set_size(info_container, LV_PCT(90), LV_PCT(75));
-  lv_obj_align(info_container, LV_ALIGN_CENTER, 0, 20);
+  lv_obj_align(info_container, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 30);
   lv_obj_set_style_bg_color(info_container, lv_color_hex(0x1a1a1a), 0);
   lv_obj_set_style_border_width(info_container, 1, 0);
   lv_obj_set_style_border_color(info_container, lv_color_hex(0x444444), 0);
   lv_obj_set_scrollbar_mode(info_container, LV_SCROLLBAR_MODE_AUTO);
+  // Explicitly enable vertical scrolling (orthogonal to horizontal back-gesture)
+  lv_obj_set_scroll_dir(info_container, LV_DIR_VER);
 
   // Create info label
   info_label = lv_label_create(info_container);
@@ -118,8 +133,10 @@ lv_obj_t *about_screen_create(lv_obj_t *parent) {
   return about_screen;
 }
 
-void about_screen_show(void) {
-  if (about_screen) {
+void about_screen_show(void)
+{
+  if (about_screen)
+  {
     ESP_LOGI(TAG, "Showing about screen");
 
     // Update info text with latest values
@@ -129,12 +146,15 @@ void about_screen_show(void) {
 
     // Show screen with animation
     screen_manager_show(about_screen);
-  } else {
+  }
+  else
+  {
     ESP_LOGW(TAG, "About screen not created");
   }
 }
 
-void about_screen_hide(void) {
+void about_screen_hide(void)
+{
   ESP_LOGI(TAG, "Hiding about screen");
-  screen_manager_go_back();
+  // Cleanup only - screen_manager_go_back() is already handling navigation
 }

@@ -193,6 +193,7 @@
 - [ ] Selective peripheral power-down
 - [ ] Deep sleep vs light sleep decision logic
 - [ ] Battery level-based sleep strategy
+- [ ] Check if we can use SP32-C6 Low-Power CPU
 
 ### IMU Gesture Detection
 

@@ -32,7 +32,15 @@ static void forget_button_event_cb(lv_event_t *e);
 static void update_connection_info(void);
 static const char *get_signal_indicator(int8_t rssi);
 
-lv_obj_t *wifi_settings_create(lv_obj_t *parent) {
+lv_obj_t *wifi_settings_create(lv_obj_t *parent)
+{
+  // Return existing screen if already created
+  if (wifi_settings_screen)
+  {
+    ESP_LOGI(TAG, "WiFi settings screen already exists, returning existing");
+    return wifi_settings_screen;
+  }
+
   // Create screen
   wifi_settings_screen = lv_obj_create(parent);
   lv_obj_set_size(wifi_settings_screen, LV_HOR_RES, LV_VER_RES);
@@ -121,8 +129,10 @@ lv_obj_t *wifi_settings_create(lv_obj_t *parent) {
   return wifi_settings_screen;
 }
 
-void wifi_settings_show(void) {
-  if (!wifi_settings_screen) {
+void wifi_settings_show(void)
+{
+  if (!wifi_settings_screen)
+  {
     ESP_LOGE(TAG, "WiFi settings screen not created");
     return;
   }
@@ -136,8 +146,10 @@ void wifi_settings_show(void) {
   wifi_settings_update_status();
 }
 
-void wifi_settings_update_status(void) {
-  if (!wifi_settings_screen) {
+void wifi_settings_update_status(void)
+{
+  if (!wifi_settings_screen)
+  {
     return;
   }
 
@@ -145,7 +157,8 @@ void wifi_settings_update_status(void) {
 
   wifi_state_t state = wifi_manager_get_state();
 
-  switch (state) {
+  switch (state)
+  {
   case WIFI_STATE_SCANNING:
     lv_label_set_text(status_label, "Status: Scanning...");
     lv_label_set_text(ssid_label, "Network: ---");
@@ -193,74 +206,97 @@ void wifi_settings_update_status(void) {
   bsp_display_unlock();
 }
 
-static void update_connection_info(void) {
+static void update_connection_info(void)
+{
   char ssid[33] = {0};
   char ip[16] = {0};
   int8_t rssi = 0;
   char buffer[64];
 
   // Get SSID
-  if (wifi_manager_get_connected_ssid(ssid, sizeof(ssid)) == ESP_OK) {
+  if (wifi_manager_get_connected_ssid(ssid, sizeof(ssid)) == ESP_OK)
+  {
     snprintf(buffer, sizeof(buffer), "Network: %s", ssid);
     lv_label_set_text(ssid_label, buffer);
   }
 
   // Get signal strength
-  if (wifi_manager_get_rssi(&rssi) == ESP_OK) {
+  if (wifi_manager_get_rssi(&rssi) == ESP_OK)
+  {
     snprintf(buffer, sizeof(buffer), "Signal: %s %d dBm",
              get_signal_indicator(rssi), rssi);
     lv_label_set_text(signal_label, buffer);
   }
 
   // Get IP address
-  if (wifi_manager_get_ip_address(ip, sizeof(ip)) == ESP_OK) {
+  if (wifi_manager_get_ip_address(ip, sizeof(ip)) == ESP_OK)
+  {
     snprintf(buffer, sizeof(buffer), "IP: %s", ip);
     lv_label_set_text(ip_label, buffer);
   }
 }
 
-static const char *get_signal_indicator(int8_t rssi) {
-  if (rssi >= -50) {
+static const char *get_signal_indicator(int8_t rssi)
+{
+  if (rssi >= -50)
+  {
     return LV_SYMBOL_WIFI; // Excellent
-  } else if (rssi >= -60) {
+  }
+  else if (rssi >= -60)
+  {
     return LV_SYMBOL_WIFI; // Good
-  } else if (rssi >= -70) {
+  }
+  else if (rssi >= -70)
+  {
     return LV_SYMBOL_WIFI; // Fair
-  } else {
+  }
+  else
+  {
     return LV_SYMBOL_WIFI; // Weak
   }
 }
 
-static void back_button_event_cb(lv_event_t *e) {
+static void back_button_event_cb(lv_event_t *e)
+{
   ESP_LOGI(TAG, "Back button pressed");
   lv_obj_t *settings = settings_get_screen();
-  if (settings) {
+  if (settings)
+  {
     screen_manager_show(settings);
   }
 }
 
-static void scan_button_event_cb(lv_event_t *e) {
+static void scan_button_event_cb(lv_event_t *e)
+{
   ESP_LOGI(TAG, "Scan button pressed");
   wifi_scan_show();
 }
 
-static void disconnect_button_event_cb(lv_event_t *e) {
+static void disconnect_button_event_cb(lv_event_t *e)
+{
   ESP_LOGI(TAG, "Disconnect button pressed");
   esp_err_t ret = wifi_manager_disconnect();
-  if (ret == ESP_OK) {
+  if (ret == ESP_OK)
+  {
     ESP_LOGI(TAG, "Disconnected from WiFi");
-  } else {
+  }
+  else
+  {
     ESP_LOGE(TAG, "Failed to disconnect: %s", esp_err_to_name(ret));
   }
 }
 
-static void forget_button_event_cb(lv_event_t *e) {
+static void forget_button_event_cb(lv_event_t *e)
+{
   ESP_LOGI(TAG, "Forget button pressed");
   esp_err_t ret = wifi_manager_clear_credentials();
-  if (ret == ESP_OK) {
+  if (ret == ESP_OK)
+  {
     ESP_LOGI(TAG, "WiFi credentials cleared");
     wifi_manager_disconnect();
-  } else {
+  }
+  else
+  {
     ESP_LOGE(TAG, "Failed to clear credentials: %s", esp_err_to_name(ret));
   }
 }

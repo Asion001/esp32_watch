@@ -26,7 +26,8 @@ static void menu_item_event_cb(lv_event_t *e);
 /**
  * @brief Helper function to create a menu item with consistent styling
  */
-static void add_menu_item(const char *icon, const char *text) {
+static void add_menu_item(const char *icon, const char *text)
+{
   lv_obj_t *item = lv_list_add_btn(main_menu_list, icon, text);
   lv_obj_add_event_cb(item, menu_item_event_cb, LV_EVENT_CLICKED, NULL);
   lv_obj_set_style_text_font(item, &lv_font_montserrat_20, 0);
@@ -36,10 +37,12 @@ static void add_menu_item(const char *icon, const char *text) {
 /**
  * @brief Menu item click handler
  */
-static void menu_item_event_cb(lv_event_t *e) {
+static void menu_item_event_cb(lv_event_t *e)
+{
   lv_event_code_t code = lv_event_get_code(e);
 
-  if (code != LV_EVENT_CLICKED) {
+  if (code != LV_EVENT_CLICKED)
+  {
     return;
   }
 
@@ -47,7 +50,8 @@ static void menu_item_event_cb(lv_event_t *e) {
   const char *text = lv_list_get_btn_text(main_menu_list, item);
 
   // Early return if text is NULL for safety
-  if (!text) {
+  if (!text)
+  {
     ESP_LOGW(TAG, "Menu item clicked but text is NULL");
     return;
   }
@@ -55,17 +59,31 @@ static void menu_item_event_cb(lv_event_t *e) {
   ESP_LOGI(TAG, "Menu item clicked: %s", text);
 
   // Navigate to specific settings screens
-  if (strcmp(text, "Display") == 0) {
+  // Create screens on-demand to avoid navigation stack corruption
+  if (strcmp(text, "Display") == 0)
+  {
+    display_settings_create(settings_screen);
     display_settings_show();
-  } else if (strcmp(text, "System") == 0) {
+  }
+  else if (strcmp(text, "System") == 0)
+  {
+    system_settings_create(settings_screen);
     system_settings_show();
-  } else if (strcmp(text, "Time & Sync") == 0) {
+  }
+  else if (strcmp(text, "Time & Sync") == 0)
+  {
     ESP_LOGI(TAG, "Time & Sync settings - not yet implemented");
     // TODO: Navigate to time settings
-  } else if (strcmp(text, "WiFi") == 0) {
+  }
+  else if (strcmp(text, "WiFi") == 0)
+  {
+    wifi_settings_create(settings_screen);
     wifi_settings_show();
-  } else if (strcmp(text, "About") == 0) {
+  }
+  else if (strcmp(text, "About") == 0)
+  {
     bsp_display_lock(0);
+    about_screen_create(settings_screen);
     about_screen_show();
     bsp_display_unlock();
   }
@@ -74,7 +92,8 @@ static void menu_item_event_cb(lv_event_t *e) {
 /**
  * @brief Create the main settings menu
  */
-static void create_main_menu(lv_obj_t *parent) {
+static void create_main_menu(lv_obj_t *parent)
+{
   // Create menu list
   main_menu_list = lv_list_create(parent);
   lv_obj_set_size(main_menu_list, LV_PCT(90), LV_PCT(70));
@@ -93,7 +112,8 @@ static void create_main_menu(lv_obj_t *parent) {
   ESP_LOGI(TAG, "Main menu created");
 }
 
-lv_obj_t *settings_create(lv_obj_t *parent) {
+lv_obj_t *settings_create(lv_obj_t *parent)
+{
   ESP_LOGI(TAG, "Creating settings on tile");
 
   // Use parent tile directly
@@ -112,19 +132,25 @@ lv_obj_t *settings_create(lv_obj_t *parent) {
   return settings_screen;
 }
 
-void settings_show(void) {
-  if (settings_screen && tileview) {
+void settings_show(void)
+{
+  if (settings_screen && tileview)
+  {
     ESP_LOGI(TAG, "Navigating to settings tile");
     bsp_display_lock(0);
     lv_tileview_set_tile_by_index(tileview, 0, 1, LV_ANIM_ON);
     bsp_display_unlock();
-  } else {
+  }
+  else
+  {
     ESP_LOGW(TAG, "Settings tile or tileview not set");
   }
 }
 
-void settings_hide(void) {
-  if (tileview) {
+void settings_hide(void)
+{
+  if (tileview)
+  {
     ESP_LOGI(TAG, "Returning to watchface tile");
     bsp_display_lock(0);
     lv_tileview_set_tile_by_index(tileview, 0, 0, LV_ANIM_ON);
@@ -134,7 +160,8 @@ void settings_hide(void) {
 
 lv_obj_t *settings_get_screen(void) { return settings_screen; }
 
-void settings_set_tileview(lv_obj_t *tv) {
+void settings_set_tileview(lv_obj_t *tv)
+{
   tileview = tv;
   ESP_LOGI(TAG, "Tileview reference set: %p", tileview);
 }
