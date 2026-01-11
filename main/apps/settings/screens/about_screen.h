@@ -11,35 +11,34 @@
 #include "lvgl.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-    /**
-     * @brief Create the about screen
-     *
-     * Creates a screen with:
-     * - Firmware version
-     * - Build date and time
-     * - Total uptime and boot count
-     * - ESP-IDF version
-     * - Chip information
-     * - Back button
-     *
-     * @param parent Parent LVGL object
-     * @return lv_obj_t* Pointer to the created screen object
-     */
-    lv_obj_t *about_screen_create(lv_obj_t *parent);
+/**
+ * @brief Create the about screen
+ *
+ * Creates a screen with:
+ * - Firmware version
+ * - Build date and time
+ * - Total uptime and boot count
+ * - ESP-IDF version
+ * - Chip information
+ * - Back button
+ *
+ * @param parent Parent LVGL object
+ * @return lv_obj_t* Pointer to the created screen object
+ */
+lv_obj_t *about_screen_create(lv_obj_t *parent);
 
-    /**
-     * @brief Show the about screen
-     */
-    void about_screen_show(void);
+/**
+ * @brief Show the about screen
+ */
+void about_screen_show(void);
 
-    /**
-     * @brief Hide the about screen
-     */
-    void about_screen_hide(void);
+/**
+ * @brief Hide the about screen
+ */
+void about_screen_hide(void);
 
 #ifdef __cplusplus
 }

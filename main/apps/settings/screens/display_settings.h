@@ -11,33 +11,32 @@
 #include "lvgl.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-    /**
-     * @brief Create the display settings screen
-     *
-     * Creates a screen with:
-     * - Brightness slider (0-100%)
-     * - Current brightness value display
-     * - Sleep timeout selector
-     * - Back button
-     *
-     * @param parent Parent LVGL object
-     * @return lv_obj_t* Pointer to the created screen object
-     */
-    lv_obj_t *display_settings_create(lv_obj_t *parent);
+/**
+ * @brief Create the display settings screen
+ *
+ * Creates a screen with:
+ * - Brightness slider (0-100%)
+ * - Current brightness value display
+ * - Sleep timeout selector
+ * - Back button
+ *
+ * @param parent Parent LVGL object
+ * @return lv_obj_t* Pointer to the created screen object
+ */
+lv_obj_t *display_settings_create(lv_obj_t *parent);
 
-    /**
-     * @brief Show the display settings screen
-     */
-    void display_settings_show(void);
+/**
+ * @brief Show the display settings screen
+ */
+void display_settings_show(void);
 
-    /**
-     * @brief Hide the display settings screen
-     */
-    void display_settings_hide(void);
+/**
+ * @brief Hide the display settings screen
+ */
+void display_settings_hide(void);
 
 #ifdef __cplusplus
 }

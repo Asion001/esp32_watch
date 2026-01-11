@@ -9,10 +9,10 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "esp_err.h"
 #include "esp_wifi_types.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,21 +22,21 @@ extern "C" {
  * @brief WiFi connection state
  */
 typedef enum {
-    WIFI_STATE_DISCONNECTED,  ///< Not connected
-    WIFI_STATE_CONNECTING,    ///< Connection in progress
-    WIFI_STATE_CONNECTED,     ///< Successfully connected
-    WIFI_STATE_FAILED,        ///< Connection failed
-    WIFI_STATE_SCANNING,      ///< Scan in progress
+  WIFI_STATE_DISCONNECTED, ///< Not connected
+  WIFI_STATE_CONNECTING,   ///< Connection in progress
+  WIFI_STATE_CONNECTED,    ///< Successfully connected
+  WIFI_STATE_FAILED,       ///< Connection failed
+  WIFI_STATE_SCANNING,     ///< Scan in progress
 } wifi_state_t;
 
 /**
  * @brief WiFi access point information
  */
 typedef struct {
-    char ssid[33];           ///< Network SSID (null-terminated)
-    int8_t rssi;             ///< Signal strength in dBm
-    wifi_auth_mode_t authmode; ///< Security type
-    uint8_t channel;         ///< WiFi channel
+  char ssid[33];             ///< Network SSID (null-terminated)
+  int8_t rssi;               ///< Signal strength in dBm
+  wifi_auth_mode_t authmode; ///< Security type
+  uint8_t channel;           ///< WiFi channel
 } wifi_ap_info_t;
 
 /**
@@ -82,7 +82,8 @@ esp_err_t wifi_manager_scan_start(void);
  * @param[in,out] ap_count Input: max APs to retrieve, Output: actual count
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t wifi_manager_get_scan_results(wifi_ap_info_t *ap_list, uint16_t *ap_count);
+esp_err_t wifi_manager_get_scan_results(wifi_ap_info_t *ap_list,
+                                        uint16_t *ap_count);
 
 /**
  * @brief Connect to WiFi network
@@ -92,7 +93,8 @@ esp_err_t wifi_manager_get_scan_results(wifi_ap_info_t *ap_list, uint16_t *ap_co
  * @param save_credentials If true, save to NVS for auto-reconnect
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t wifi_manager_connect(const char *ssid, const char *password, bool save_credentials);
+esp_err_t wifi_manager_connect(const char *ssid, const char *password,
+                               bool save_credentials);
 
 /**
  * @brief Disconnect from WiFi network
@@ -148,7 +150,8 @@ esp_err_t wifi_manager_get_ip_address(char *ip_str, size_t max_len);
  * @param user_data Optional user data passed to callback
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t wifi_manager_register_callback(wifi_manager_callback_t callback, void *user_data);
+esp_err_t wifi_manager_register_callback(wifi_manager_callback_t callback,
+                                         void *user_data);
 
 /**
  * @brief Clear saved WiFi credentials from NVS

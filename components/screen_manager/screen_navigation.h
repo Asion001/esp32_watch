@@ -40,7 +40,8 @@ void screen_nav_load_horizontal(lv_obj_t *new_screen, lv_obj_t **prev_screen);
  * @param current_screen Current screen
  * @param prev_screen Previous screen to return to
  */
-void screen_nav_go_back_with_anim(lv_obj_t *current_screen, lv_obj_t *prev_screen);
+void screen_nav_go_back_with_anim(lv_obj_t *current_screen,
+                                  lv_obj_t *prev_screen);
 
 /**
  * @brief Go back to previous screen with horizontal slide animation
@@ -48,16 +49,19 @@ void screen_nav_go_back_with_anim(lv_obj_t *current_screen, lv_obj_t *prev_scree
  * @param current_screen Current screen
  * @param prev_screen Previous screen to return to
  */
-void screen_nav_go_back_horizontal(lv_obj_t *current_screen, lv_obj_t *prev_screen);
+void screen_nav_go_back_horizontal(lv_obj_t *current_screen,
+                                   lv_obj_t *prev_screen);
 
 /**
  * @brief Setup gesture detection for swipe to go back
  *
  * @param screen Screen to add gesture detection to
  * @param hide_cb Callback function to call when gesture is detected
- * @param direction Gesture direction to detect (e.g., LV_DIR_BOTTOM, LV_DIR_RIGHT)
+ * @param direction Gesture direction to detect (e.g., LV_DIR_BOTTOM,
+ * LV_DIR_RIGHT)
  */
-void screen_nav_setup_gestures(lv_obj_t *screen, screen_hide_cb_t hide_cb, lv_dir_t direction);
+void screen_nav_setup_gestures(lv_obj_t *screen, screen_hide_cb_t hide_cb,
+                               lv_dir_t direction);
 
 /**
  * @brief Cleanup gesture data for a screen
