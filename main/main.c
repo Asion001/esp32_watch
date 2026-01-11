@@ -1,9 +1,15 @@
 #include "apps/settings/screens/about_screen.h"
 #include "apps/settings/screens/display_settings.h"
 #include "apps/settings/screens/system_settings.h"
+#ifdef CONFIG_ENABLE_WIFI
 #include "apps/settings/screens/wifi_password.h"
 #include "apps/settings/screens/wifi_scan.h"
 #include "apps/settings/screens/wifi_settings.h"
+#include "wifi_manager.h"
+#endif
+#ifdef CONFIG_ENABLE_OTA
+#include "ota_manager.h"
+#endif
 #include "apps/settings/settings.h"
 #include "apps/watchface/watchface.h"
 #include "bsp/display.h"
@@ -20,19 +26,20 @@
 #include "screen_manager.h"
 #include "settings_storage.h"
 #include "sleep_manager.h"
-#include "wifi_manager.h"
 
 static const char *TAG = "Main";
 
 // Store tileview reference for button handler
 static lv_obj_t *g_tileview = NULL;
 
+#ifdef CONFIG_ENABLE_WIFI
 // WiFi status callback
 static void wifi_status_callback(wifi_state_t state, void *user_data)
 {
   ESP_LOGI(TAG, "WiFi state changed: %d", state);
   wifi_settings_update_status();
 }
+#endif
 
 // Button press configuration
 #define BUTTON_LONG_PRESS_MS 3000     // 3 seconds for restart
@@ -211,6 +218,7 @@ void app_main(void)
              esp_err_to_name(ret));
   }
 
+#ifdef CONFIG_ENABLE_WIFI
   // Initialize WiFi manager (needs NVS and settings_storage to be initialized
   // first)
   ESP_LOGI(TAG, "Initializing WiFi manager...");
@@ -225,13 +233,31 @@ void app_main(void)
     // Register WiFi status callback
     wifi_manager_register_callback(wifi_status_callback, NULL);
 
+#ifdef CONFIG_WIFI_AUTO_CONNECT
     // Auto-connect if credentials are saved
     if (wifi_manager_has_credentials())
     {
       ESP_LOGI(TAG, "Saved WiFi credentials found, attempting auto-connect...");
       wifi_manager_auto_connect();
     }
+#endif
   }
+#else
+  ESP_LOGI(TAG, "WiFi disabled in configuration");
+#endif
+
+#ifdef CONFIG_ENABLE_OTA
+  // Initialize OTA manager (requires WiFi)
+  ESP_LOGI(TAG, "Initializing OTA manager...");
+  ret = ota_manager_init();
+  if (ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to initialize OTA manager: %s",
+             esp_err_to_name(ret));
+  }
+#else
+  ESP_LOGI(TAG, "OTA updates disabled in configuration");
+#endif
 
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
   // Initialize sleep manager

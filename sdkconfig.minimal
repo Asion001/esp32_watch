@@ -1,13 +1,20 @@
-# Configuration for minimal features build (CI testing)
-# This config disables optional features to ensure graceful degradation
+# Minimal configuration without WiFi and OTA
+CONFIG_IDF_TARGET="esp32c6"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
 
-# Sleep Manager - Disabled
-CONFIG_SLEEP_MANAGER_ENABLE=n
-CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER=n
-CONFIG_SLEEP_MANAGER_DEBUG_LOGS=n
+# Disable WiFi
+CONFIG_ENABLE_WIFI=n
 
-# Uptime Tracker - Keep enabled (core functionality)
-CONFIG_UPTIME_TRACKER_ENABLE=y
+# Disable OTA (requires WiFi)
+CONFIG_ENABLE_OTA=n
 
-# Compiler optimizations for size
-CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+# Sleep manager
+CONFIG_SLEEP_MANAGER_ENABLE=y
+
+# LVGL fonts
+CONFIG_LV_FONT_MONTSERRAT_12=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_48=y
