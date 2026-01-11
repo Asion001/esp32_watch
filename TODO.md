@@ -78,9 +78,9 @@
 ### WiFi Configuration
 
 - [x] WiFi manager integration (component complete with 15 API functions)
-- [ ] SSID scanning and list display (UI screen)
-- [ ] Password input screen (virtual keyboard)
-- [ ] Connection status indicator (UI screen)
+- [x] SSID scanning and list display (UI screen complete)
+- [x] Password input screen (virtual keyboard complete)
+- [x] Connection status indicator (UI screen complete)
 - [x] WiFi credential storage (secure NVS via settings_storage)
 - [x] Auto-reconnect on boot (wifi_manager_auto_connect)
 

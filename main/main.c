@@ -14,9 +14,19 @@
 #include "apps/settings/screens/display_settings.h"
 #include "apps/settings/screens/system_settings.h"
 #include "apps/settings/screens/about_screen.h"
+#include "apps/settings/screens/wifi_settings.h"
+#include "apps/settings/screens/wifi_scan.h"
+#include "apps/settings/screens/wifi_password.h"
+#include "wifi_manager.h"
 #include "sleep_manager.h"
 
 static const char *TAG = "Main";
+
+// WiFi status callback
+static void wifi_status_callback(wifi_state_t state, void *user_data) {
+    ESP_LOGI(TAG, "WiFi state changed: %d", state);
+    wifi_settings_update_status();
+}
 
 // Button long press configuration
 #define BUTTON_LONG_PRESS_MS 3000 // 3 seconds for reset
@@ -127,6 +137,26 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to initialize screen manager: %s", esp_err_to_name(ret));
     }
 
+    // Initialize WiFi manager
+    ESP_LOGI(TAG, "Initializing WiFi manager...");
+    ret = wifi_manager_init();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize WiFi manager: %s", esp_err_to_name(ret));
+    }
+    else
+    {
+        // Register WiFi status callback
+        wifi_manager_register_callback(wifi_status_callback, NULL);
+        
+        // Auto-connect if credentials are saved
+        if (wifi_manager_has_credentials())
+        {
+            ESP_LOGI(TAG, "Saved WiFi credentials found, attempting auto-connect...");
+            wifi_manager_auto_connect();
+        }
+    }
+
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
     // Initialize sleep manager
     ESP_LOGI(TAG, "Initializing sleep manager...");
@@ -174,6 +204,11 @@ void app_main(void)
 
     // Create about screen (hidden by default)
     about_screen_create(lv_screen_active());
+
+    // Create WiFi screens (hidden by default)
+    wifi_settings_create(lv_screen_active());
+    wifi_scan_create(lv_screen_active());
+    // Note: wifi_password screen is created on-demand when needed
 
     // Unlock LVGL
     bsp_display_unlock();

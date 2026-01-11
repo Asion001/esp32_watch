@@ -8,6 +8,7 @@
 #include "screens/display_settings.h"
 #include "screens/system_settings.h"
 #include "screens/about_screen.h"
+#include "screens/wifi_settings.h"
 #include "esp_log.h"
 #include "bsp/esp-bsp.h"
 #include <string.h>
@@ -72,8 +73,7 @@ static void menu_item_event_cb(lv_event_t *e)
     }
     else if (strcmp(text, "WiFi") == 0)
     {
-        ESP_LOGI(TAG, "WiFi settings - not yet implemented");
-        // TODO: Navigate to WiFi settings
+        wifi_settings_show();
     }
     else if (strcmp(text, "About") == 0)
     {
