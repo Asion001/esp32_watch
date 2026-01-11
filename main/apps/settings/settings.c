@@ -113,7 +113,7 @@ lv_obj_t *settings_create(lv_obj_t *parent)
 
     // Use parent tile directly
     settings_screen = parent;
-    
+
     // Add title label at top
     lv_obj_t *title = lv_label_create(settings_screen);
     lv_label_set_text(title, "Settings");
@@ -133,7 +133,7 @@ void settings_show(void)
     {
         ESP_LOGI(TAG, "Navigating to settings tile");
         bsp_display_lock(0);
-        lv_tileview_set_tile_by_id(tileview, 0, 1, LV_ANIM_ON);
+        lv_tileview_set_tile_by_index(tileview, 0, 1, LV_ANIM_ON);
         bsp_display_unlock();
     }
     else
@@ -148,7 +148,7 @@ void settings_hide(void)
     {
         ESP_LOGI(TAG, "Returning to watchface tile");
         bsp_display_lock(0);
-        lv_tileview_set_tile_by_id(tileview, 0, 0, LV_ANIM_ON);
+        lv_tileview_set_tile_by_index(tileview, 0, 0, LV_ANIM_ON);
         bsp_display_unlock();
     }
 }

@@ -23,7 +23,8 @@
 static const char *TAG = "Main";
 
 // WiFi status callback
-static void wifi_status_callback(wifi_state_t state, void *user_data) {
+static void wifi_status_callback(wifi_state_t state, void *user_data)
+{
     ESP_LOGI(TAG, "WiFi state changed: %d", state);
     wifi_settings_update_status();
 }
@@ -148,7 +149,7 @@ void app_main(void)
     {
         // Register WiFi status callback
         wifi_manager_register_callback(wifi_status_callback, NULL);
-        
+
         // Auto-connect if credentials are saved
         if (wifi_manager_has_credentials())
         {
@@ -185,7 +186,7 @@ void app_main(void)
     // Add watchface tile (row 0, col 0) - home tile, can swipe down
     lv_obj_t *watchface_tile = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_BOTTOM);
     ESP_LOGI(TAG, "Watchface tile created: %p", watchface_tile);
-    
+
     lv_obj_t *watchface = watchface_create(watchface_tile);
     if (watchface)
     {
@@ -195,7 +196,7 @@ void app_main(void)
     // Add settings tile (row 0, col 1) - can swipe up to return to watchface
     lv_obj_t *settings_tile = lv_tileview_add_tile(tileview, 0, 1, LV_DIR_TOP);
     ESP_LOGI(TAG, "Settings tile created: %p", settings_tile);
-    
+
     // Create settings on its tile
     settings_create(settings_tile);
     settings_set_tileview(tileview); // Give settings access to tileview for navigation
@@ -210,7 +211,7 @@ void app_main(void)
     // Note: wifi_password screen is created on-demand when needed
 
     // Set watchface tile as the active tile initially
-    lv_tileview_set_tile_by_id(tileview, 0, 0, LV_ANIM_OFF);
+    lv_tileview_set_tile_by_index(tileview, 0, 0, LV_ANIM_OFF);
 
     // Unlock LVGL
     bsp_display_unlock();
