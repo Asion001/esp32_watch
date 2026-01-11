@@ -13,6 +13,9 @@
 #include "bsp/esp-bsp.h"
 #include "driver/gpio.h"
 #include "pmu_axp2101.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lvgl.h"
 
 static const char *TAG = "SleepMgr";
 
@@ -26,6 +29,10 @@ static const char *TAG = "SleepMgr";
 // Inactivity tracking
 static int64_t last_activity_time = 0;
 static bool is_sleeping = false;
+static bool is_backlight_off = false;
+
+// Task handle for sleep monitoring
+static TaskHandle_t sleep_task_handle = NULL;
 
 // Store LVGL objects for sleep/wake control
 typedef struct
@@ -38,30 +45,34 @@ static timer_state_t saved_timers[MAX_TIMERS];
 static uint8_t saved_timer_count = 0;
 
 /**
- * @brief Turn off display and backlight
+ * @brief Turn off display and backlight (internal helper for sleep)
  */
 static esp_err_t display_sleep(void)
 {
 #ifdef CONFIG_SLEEP_MANAGER_BACKLIGHT_CONTROL
-#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB
-    // Don't turn off screen if USB/JTAG is connected (for development/debugging)
-    if (sleep_manager_is_usb_connected())
+    if (!is_backlight_off)
     {
-        SLEEP_LOGD(TAG, "USB connected - screen off prevented");
-        return ESP_OK;
-    }
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB
+        // Don't turn off screen if USB/JTAG is connected (for development/debugging)
+        if (sleep_manager_is_usb_connected())
+        {
+            SLEEP_LOGD(TAG, "USB connected - screen off prevented");
+            return ESP_OK;
+        }
 #endif
-    // Turn off backlight
-    bsp_display_backlight_off();
+        // Turn off backlight
+        bsp_display_backlight_off();
+        is_backlight_off = true;
 
-    // Small delay to allow backlight to fade
-    vTaskDelay(pdMS_TO_TICKS(100));
+        // Small delay to allow backlight to fade
+        vTaskDelay(pdMS_TO_TICKS(100));
 
-    // Note: We can't call esp_lcd_panel_disp_on_off() directly here
-    // because panel_handle is private in BSP. For now, backlight off
-    // is sufficient. True display sleep would require BSP modification.
+        // Note: We can't call esp_lcd_panel_disp_on_off() directly here
+        // because panel_handle is private in BSP. For now, backlight off
+        // is sufficient. True display sleep would require BSP modification.
 
-    ESP_LOGI(TAG, "Display sleep (backlight off)");
+        ESP_LOGI(TAG, "Display sleep (backlight off)");
+    }
 #else
     ESP_LOGI(TAG, "Display sleep (backlight control disabled)");
 #endif
@@ -69,15 +80,19 @@ static esp_err_t display_sleep(void)
 }
 
 /**
- * @brief Wake up display and backlight
+ * @brief Wake up display and backlight (internal helper for wake)
  */
 static esp_err_t display_wake(void)
 {
 #ifdef CONFIG_SLEEP_MANAGER_BACKLIGHT_CONTROL
-    // Turn on backlight
-    bsp_display_backlight_on();
+    if (is_backlight_off)
+    {
+        // Turn on backlight
+        bsp_display_backlight_on();
+        is_backlight_off = false;
 
-    ESP_LOGI(TAG, "Display wake (backlight on)");
+        ESP_LOGI(TAG, "Display wake (backlight on)");
+    }
 #else
     ESP_LOGI(TAG, "Display wake (backlight control disabled)");
 #endif
@@ -135,6 +150,63 @@ static void resume_lvgl_timers(void)
 #else
     ESP_LOGI(TAG, "LVGL timer resume disabled");
 #endif
+}
+
+/**
+ * @brief Global event handler for touch events
+ * Resets sleep timer and turns on backlight on any screen touch
+ */
+static void global_touch_event_handler(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
+    {
+        // Reset inactivity timer on touch
+        sleep_manager_reset_timer();
+
+        // Turn on backlight if it's off
+        if (sleep_manager_is_backlight_off())
+        {
+            sleep_manager_backlight_on();
+        }
+    }
+}
+
+/**
+ * @brief Sleep check task - monitors inactivity and triggers backlight off and sleep separately
+ */
+static void sleep_check_task(void *pvParameters)
+{
+    ESP_LOGI(TAG, "Sleep check task started (backlight timeout: %ds, sleep timeout: %ds)",
+             CONFIG_SLEEP_MANAGER_BACKLIGHT_TIMEOUT_SECONDS, CONFIG_SLEEP_TIMEOUT_SECONDS);
+
+    while (1)
+    {
+        // Check every 500ms
+        vTaskDelay(pdMS_TO_TICKS(500));
+
+        // Check backlight timeout first (independent of sleep)
+        if (sleep_manager_should_turn_off_backlight())
+        {
+            ESP_LOGI(TAG, "Backlight inactivity timeout - turning off backlight");
+            sleep_manager_backlight_off();
+        }
+
+        // Check sleep timeout (only if not already sleeping)
+        if (sleep_manager_should_sleep())
+        {
+            ESP_LOGI(TAG, "Sleep inactivity timeout - entering sleep mode");
+
+            // Enter sleep (blocks until wake-up)
+            esp_err_t ret = sleep_manager_sleep();
+
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Sleep failed: %s", esp_err_to_name(ret));
+            }
+        }
+    }
 }
 
 /**
@@ -204,9 +276,30 @@ esp_err_t sleep_manager_init(void)
     // Keep RTC peripherals powered during sleep (for RTC chip, timers)
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
 
-    // Initialize activity timer
+    // Initialize activity timer and state
     last_activity_time = esp_timer_get_time();
     is_sleeping = false;
+    is_backlight_off = false;
+
+    // Register global touch event handler for backlight wake-up
+    bsp_display_lock(0);
+    lv_display_t *disp = lv_display_get_default();
+    if (disp)
+    {
+        lv_obj_t *screen_layer = lv_layer_top(); // Use top layer to catch all events
+        lv_obj_add_event_cb(screen_layer, global_touch_event_handler, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(screen_layer, global_touch_event_handler, LV_EVENT_PRESSING, NULL);
+        ESP_LOGI(TAG, "Global touch event handler registered");
+    }
+    bsp_display_unlock();
+
+    // Create sleep monitoring task
+    BaseType_t task_created = xTaskCreate(sleep_check_task, "sleep_check", 2048, NULL, 5, &sleep_task_handle);
+    if (task_created != pdPASS)
+    {
+        ESP_LOGE(TAG, "Failed to create sleep monitoring task");
+        return ESP_FAIL;
+    }
 
 #ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
@@ -369,6 +462,81 @@ uint32_t sleep_manager_get_inactive_time(void)
     int64_t now = esp_timer_get_time();
     int64_t elapsed_us = now - last_activity_time;
     return (uint32_t)(elapsed_us / 1000); // Convert to milliseconds
+}
+
+bool sleep_manager_should_turn_off_backlight(void)
+{
+    if (is_backlight_off)
+    {
+        return false; // Already off
+    }
+
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB
+    // Don't turn off backlight if USB/JTAG is connected (for development/debugging)
+    if (sleep_manager_is_usb_connected())
+    {
+        SLEEP_LOGD(TAG, "USB connected - backlight off prevented");
+        return false;
+    }
+#endif
+
+    uint32_t inactive_ms = sleep_manager_get_inactive_time();
+    return (inactive_ms >= BACKLIGHT_TIMEOUT_MS);
+}
+
+esp_err_t sleep_manager_backlight_off(void)
+{
+    if (is_backlight_off)
+    {
+        SLEEP_LOGD(TAG, "Backlight already off");
+        return ESP_OK;
+    }
+
+#ifdef CONFIG_SLEEP_MANAGER_BACKLIGHT_CONTROL
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB
+    // Don't turn off backlight if USB/JTAG is connected
+    if (sleep_manager_is_usb_connected())
+    {
+        SLEEP_LOGD(TAG, "USB connected - backlight off prevented");
+        return ESP_OK;
+    }
+#endif
+
+    bsp_display_backlight_off();
+    is_backlight_off = true;
+    ESP_LOGI(TAG, "Backlight turned off");
+#else
+    ESP_LOGI(TAG, "Backlight control disabled");
+#endif
+
+    return ESP_OK;
+}
+
+esp_err_t sleep_manager_backlight_on(void)
+{
+    if (!is_backlight_off)
+    {
+        SLEEP_LOGD(TAG, "Backlight already on");
+        return ESP_OK;
+    }
+
+#ifdef CONFIG_SLEEP_MANAGER_BACKLIGHT_CONTROL
+    bsp_display_backlight_on();
+    is_backlight_off = false;
+    ESP_LOGI(TAG, "Backlight turned on");
+
+    // Reset activity timer when turning on backlight
+    sleep_manager_reset_timer();
+#else
+    ESP_LOGI(TAG, "Backlight control disabled");
+#endif
+
+    return ESP_OK;
+}
+
+bool sleep_manager_is_backlight_off(void)
+{
+    return is_backlight_off;
 }
 
 #endif // CONFIG_SLEEP_MANAGER_ENABLE

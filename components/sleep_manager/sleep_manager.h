@@ -28,6 +28,9 @@ extern "C"
 // Only compile if sleep manager is enabled
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
 
+/** Inactivity timeout before turning off backlight (milliseconds) */
+#define BACKLIGHT_TIMEOUT_MS (CONFIG_SLEEP_MANAGER_BACKLIGHT_TIMEOUT_SECONDS * 1000)
+
 /** Inactivity timeout before entering sleep (milliseconds) */
 #define SLEEP_TIMEOUT_MS (CONFIG_SLEEP_TIMEOUT_SECONDS * 1000)
 
@@ -97,6 +100,36 @@ extern "C"
      * @return true if USB power is detected, false otherwise
      */
     bool sleep_manager_is_usb_connected(void);
+
+    /**
+     * @brief Check if backlight should turn off
+     *
+     * Call this periodically to check if backlight timeout expired
+     *
+     * @return true if backlight should turn off, false otherwise
+     */
+    bool sleep_manager_should_turn_off_backlight(void);
+
+    /**
+     * @brief Turn off backlight (independent of sleep)
+     *
+     * @return ESP_OK on success, ESP_FAIL on error
+     */
+    esp_err_t sleep_manager_backlight_off(void);
+
+    /**
+     * @brief Turn on backlight (independent of sleep)
+     *
+     * @return ESP_OK on success, ESP_FAIL on error
+     */
+    esp_err_t sleep_manager_backlight_on(void);
+
+    /**
+     * @brief Check if backlight is currently off
+     *
+     * @return true if backlight is off, false if on
+     */
+    bool sleep_manager_is_backlight_off(void);
 
 #else // !CONFIG_SLEEP_MANAGER_ENABLE
 

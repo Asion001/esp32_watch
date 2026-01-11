@@ -89,40 +89,6 @@ static void button_monitor_task(void *pvParameters)
     }
 }
 
-#ifdef CONFIG_SLEEP_MANAGER_ENABLE
-/**
- * @brief Sleep check task - monitors inactivity and triggers sleep
- */
-static void sleep_check_task(void *pvParameters)
-{
-#ifdef CONFIG_SLEEP_MANAGER_ENABLE
-    ESP_LOGI(TAG, "Sleep check task started");
-
-    while (1)
-    {
-        // Check every 500ms if we should enter sleep
-        vTaskDelay(pdMS_TO_TICKS(500));
-
-        if (sleep_manager_should_sleep())
-        {
-            ESP_LOGI(TAG, "Inactivity timeout - entering sleep mode");
-
-            // Enter sleep (blocks until wake-up)
-            esp_err_t ret = sleep_manager_sleep();
-
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Sleep failed: %s", esp_err_to_name(ret));
-            }
-        }
-    }
-#else
-    ESP_LOGI(TAG, "Sleep manager disabled - task exiting");
-    vTaskDelete(NULL);
-#endif
-}
-#endif
-
 void app_main(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
@@ -266,12 +232,6 @@ void app_main(void)
     bsp_display_unlock();
 
     ESP_LOGI(TAG, "Watch initialized successfully with tileview navigation");
-
-#ifdef CONFIG_SLEEP_MANAGER_ENABLE
-    // Create sleep monitoring task
-    xTaskCreate(sleep_check_task, "sleep_check", 2048, NULL, 5, NULL);
-    ESP_LOGI(TAG, "Sleep monitoring task created");
-#endif
 
     // Create button monitor task for reset functionality
     xTaskCreate(button_monitor_task, "button_monitor", 2048, NULL, 5, NULL);

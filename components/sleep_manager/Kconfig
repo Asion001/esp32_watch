@@ -7,13 +7,23 @@ menu "App: Sleep Manager"
             Enable automatic sleep on inactivity.
             When enabled, the device will enter sleep mode after a period of inactivity.
 
+    config SLEEP_MANAGER_BACKLIGHT_TIMEOUT_SECONDS
+        int "Backlight timeout (seconds)"
+        depends on SLEEP_MANAGER_ENABLE
+        default 10
+        range 1 300
+        help
+            Time in seconds before turning off backlight due to inactivity.
+            Backlight will turn off independently of sleep mode.
+
     config SLEEP_TIMEOUT_SECONDS
         int "Sleep timeout (seconds)"
         depends on SLEEP_MANAGER_ENABLE
-        default 10
+        default 30
         range 5 300
         help
             Time in seconds before entering sleep mode due to inactivity.
+            Should typically be longer than backlight timeout.
 
     config SLEEP_MANAGER_BACKLIGHT_CONTROL
         bool "Control display backlight"
