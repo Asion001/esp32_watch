@@ -105,11 +105,23 @@ static void button_monitor_task(void *pvParameters)
       was_pressed = false;
       last_release_ms = current_ms;
 
-      // Handle short press - navigate back/home
+      // Handle short press - wake screen or navigate back/home
       if (!long_press_triggered && press_duration < BUTTON_SHORT_PRESS_MAX_MS)
       {
         ESP_LOGI(TAG, "Short press detected");
         vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to ensure log is flushed
+
+#ifdef CONFIG_SLEEP_MANAGER_ENABLE
+        // Check if backlight is off - if so, just wake the screen
+        if (sleep_manager_is_backlight_off())
+        {
+          ESP_LOGI(TAG, "Screen is off - waking screen");
+          sleep_manager_backlight_on();
+          // Don't navigate - just wake the screen
+          ESP_LOGD(TAG, "Button released (screen wake)");
+          continue; // Skip navigation logic
+        }
+#endif
 
         if (!g_tileview)
         {
