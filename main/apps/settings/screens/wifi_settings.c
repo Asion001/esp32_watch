@@ -247,3 +247,32 @@ static void forget_button_event_cb(lv_event_t *e) {
         ESP_LOGE(TAG, "Failed to clear credentials: %s", esp_err_to_name(ret));
     }
 }
+
+void wifi_settings_show(void) {
+    if (!wifi_settings_screen) {
+        ESP_LOGE(TAG, "WiFi settings screen not created");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Showing WiFi settings screen");
+    
+    // Update status before showing
+    update_connection_info();
+    
+    // Show screen
+    screen_manager_show_wifi_settings();
+}
+
+void wifi_settings_update_status(void) {
+    if (!wifi_settings_screen) {
+        ESP_LOGW(TAG, "WiFi settings screen not created yet");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Updating WiFi status display");
+    
+    // Lock display for UI updates
+    bsp_display_lock(0);
+    update_connection_info();
+    bsp_display_unlock();
+}
