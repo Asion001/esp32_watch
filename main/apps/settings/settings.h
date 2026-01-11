@@ -49,6 +49,15 @@ extern "C"
      */
     lv_obj_t *settings_get_screen(void);
 
+    /**
+     * @brief Set the tileview for navigation
+     *
+     * Must be called after creating settings to enable proper back navigation
+     *
+     * @param tv Pointer to the main tileview widget
+     */
+    void settings_set_tileview(lv_obj_t *tv);
+
 #ifdef __cplusplus
 }
 #endif

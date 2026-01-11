@@ -44,13 +44,6 @@ extern "C"
      */
     lv_timer_t *watchface_get_timer(void);
 
-    /**
-     * @brief Setup gesture detection on watchface screen
-     *
-     * Must be called AFTER the screen is shown/active
-     */
-    void watchface_setup_gestures(void);
-
 #ifdef __cplusplus
 }
 #endif

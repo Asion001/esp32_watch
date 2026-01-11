@@ -176,44 +176,46 @@ void app_main(void)
     lv_obj_t *default_screen = lv_scr_act();
     ESP_LOGI(TAG, "Default active screen at startup: %p", default_screen);
 
-    // Create watchface on active screen (root screen)
-    lv_obj_t *watchface = watchface_create(lv_screen_active());
+    // Create main tileview for watchface <-> settings navigation
+    lv_obj_t *tileview = lv_tileview_create(lv_screen_active());
+    lv_obj_set_size(tileview, LV_PCT(100), LV_PCT(100));
+    lv_obj_clear_flag(tileview, LV_OBJ_FLAG_SCROLLABLE);
+    ESP_LOGI(TAG, "Tileview created: %p", tileview);
+
+    // Add watchface tile (row 0, col 0) - home tile, can swipe down
+    lv_obj_t *watchface_tile = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_BOTTOM);
+    ESP_LOGI(TAG, "Watchface tile created: %p", watchface_tile);
+    
+    lv_obj_t *watchface = watchface_create(watchface_tile);
     if (watchface)
     {
-        ESP_LOGI(TAG, "Watchface created: %p", watchface);
-
-        // Load watchface screen immediately
-        screen_manager_show(watchface);
-
-        ESP_LOGI(TAG, "After screen_manager_show, active screen: %p", lv_scr_act());
-
-        // Setup gestures AFTER screen is shown/active
-        watchface_setup_gestures();
-
-        ESP_LOGI(TAG, "Watchface initialized and shown");
+        ESP_LOGI(TAG, "Watchface created on tile: %p", watchface);
     }
 
-    // Create settings screen (hidden by default)
-    settings_create(lv_screen_active());
+    // Add settings tile (row 0, col 1) - can swipe up to return to watchface
+    lv_obj_t *settings_tile = lv_tileview_add_tile(tileview, 0, 1, LV_DIR_TOP);
+    ESP_LOGI(TAG, "Settings tile created: %p", settings_tile);
+    
+    // Create settings on its tile
+    settings_create(settings_tile);
+    settings_set_tileview(tileview); // Give settings access to tileview for navigation
 
-    // Create display settings screen (hidden by default)
+    // Create sub-screens as separate screens (not tiles)
+    // These are navigated to from settings menu
     display_settings_create(lv_screen_active());
-
-    // Create system settings screen (hidden by default)
     system_settings_create(lv_screen_active());
-
-    // Create about screen (hidden by default)
     about_screen_create(lv_screen_active());
-
-    // Create WiFi screens (hidden by default)
     wifi_settings_create(lv_screen_active());
     wifi_scan_create(lv_screen_active());
     // Note: wifi_password screen is created on-demand when needed
 
+    // Set watchface tile as the active tile initially
+    lv_tileview_set_tile_by_id(tileview, 0, 0, LV_ANIM_OFF);
+
     // Unlock LVGL
     bsp_display_unlock();
 
-    ESP_LOGI(TAG, "Watch initialized successfully");
+    ESP_LOGI(TAG, "Watch initialized successfully with tileview navigation");
 
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
     // Create sleep monitoring task

@@ -117,39 +117,6 @@ static const widget_config_t widget_configs[] = {
 #define WIDGET_COUNT (sizeof(widget_configs) / sizeof(widget_configs[0]))
 
 /**
- * @brief Gesture event callback for opening settings
- */
-static void swipe_event_cb(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *target = lv_event_get_target(e);
-
-    if (code == LV_EVENT_GESTURE)
-    {
-        // Only handle gestures if this screen is actually active
-        if (lv_scr_act() != target)
-        {
-            ESP_LOGD(TAG, "Ignoring gesture - screen not active");
-            return;
-        }
-
-#ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
-        // Reset sleep timer on any gesture
-        sleep_manager_reset_timer();
-#endif
-
-        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        ESP_LOGI(TAG, "Gesture detected: direction=%d", dir);
-
-        if (dir == LV_DIR_BOTTOM)
-        {
-            ESP_LOGI(TAG, "Swipe down gesture - opening settings");
-            settings_show();
-        }
-    }
-}
-
-/**
  * @brief Timer callback to update time and battery every second
  */
 static void watchface_timer_cb(lv_timer_t *timer)
@@ -294,31 +261,16 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
         ESP_LOGE(TAG, "Failed to initialize uptime tracker");
     }
 
-    // Create screen using screen_manager (root screen - no gestures from manager)
-    screen_config_t config = {
-        .title = NULL,                 // No title for watchface
-        .anim_type = SCREEN_ANIM_NONE, // Root screen, no animation for itself
-        .hide_callback = NULL,         // No hide callback for root screen
-    };
-
-    screen = screen_manager_create(&config);
-    if (!screen)
-    {
-        ESP_LOGE(TAG, "Failed to create screen");
-        return NULL;
-    }
-
-    // Keep scrollable flag ENABLED for gesture detection to work
-    // LVGL processes gestures as part of scroll handling
-    // To prevent actual scrolling, we just don't set scroll direction
-    // (by default the screen won't scroll but will still detect gestures)
+    // Use parent tile directly as the screen (no screen_manager needed for tiles)
+    screen = parent;
+    ESP_LOGI(TAG, "Using parent tile as screen: %p", screen);
 
     // Build all widgets from configuration table
     for (size_t i = 0; i < WIDGET_COUNT; i++)
     {
         const widget_config_t *config = &widget_configs[i];
 
-        // Create label
+        // Create label on the tile
         lv_obj_t *label = lv_label_create(screen);
 
         // Set size
@@ -397,36 +349,4 @@ void watchface_update(void)
 lv_timer_t *watchface_get_timer(void)
 {
     return update_timer;
-}
-
-void watchface_setup_gestures(void)
-{
-    if (!screen)
-    {
-        ESP_LOGE(TAG, "Cannot setup gestures - screen not created");
-        return;
-    }
-
-    ESP_LOGI(TAG, "Setting up gestures on watchface");
-    ESP_LOGI(TAG, "Watchface screen: %p, Currently active: %p", screen, lv_scr_act());
-
-    // Check screen flags before modification
-    ESP_LOGI(TAG, "Screen flags before: scrollable=%d, clickable=%d, gesture_bubble=%d",
-             lv_obj_has_flag(screen, LV_OBJ_FLAG_SCROLLABLE),
-             lv_obj_has_flag(screen, LV_OBJ_FLAG_CLICKABLE),
-             lv_obj_has_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE));
-
-    // Ensure gesture detection is enabled on the screen
-    lv_obj_add_flag(screen, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_clear_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE);
-
-    // Listen only for gesture events (not ALL events)
-    lv_obj_add_event_cb(screen, swipe_event_cb, LV_EVENT_GESTURE, NULL);
-
-    ESP_LOGI(TAG, "Screen flags after: scrollable=%d, clickable=%d, gesture_bubble=%d",
-             lv_obj_has_flag(screen, LV_OBJ_FLAG_SCROLLABLE),
-             lv_obj_has_flag(screen, LV_OBJ_FLAG_CLICKABLE),
-             lv_obj_has_flag(screen, LV_OBJ_FLAG_GESTURE_BUBBLE));
-
-    ESP_LOGI(TAG, "Gesture setup complete");
 }

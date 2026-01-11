@@ -18,6 +18,7 @@ static const char *TAG = "Settings";
 // UI elements
 static lv_obj_t *settings_screen = NULL;
 static lv_obj_t *main_menu_list = NULL;
+static lv_obj_t *tileview = NULL; // Reference to main tileview for navigation
 
 // Forward declarations
 static void menu_item_event_cb(lv_event_t *e);
@@ -108,53 +109,57 @@ static void create_main_menu(lv_obj_t *parent)
 
 lv_obj_t *settings_create(lv_obj_t *parent)
 {
-    ESP_LOGI(TAG, "Creating settings screen");
+    ESP_LOGI(TAG, "Creating settings on tile");
 
-    // Create screen using screen_manager
-    screen_config_t config = {
-        .title = "Settings",
-        .anim_type = SCREEN_ANIM_VERTICAL,
-        .hide_callback = settings_hide,
-    };
-
-    settings_screen = screen_manager_create(&config);
-    if (!settings_screen)
-    {
-        ESP_LOGE(TAG, "Failed to create settings screen");
-        return NULL;
-    }
+    // Use parent tile directly
+    settings_screen = parent;
+    
+    // Add title label at top
+    lv_obj_t *title = lv_label_create(settings_screen);
+    lv_label_set_text(title, "Settings");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
 
     // Create main menu
     create_main_menu(settings_screen);
 
-    ESP_LOGI(TAG, "Settings screen created");
+    ESP_LOGI(TAG, "Settings created on tile");
     return settings_screen;
 }
 
 void settings_show(void)
 {
-    if (settings_screen)
+    if (settings_screen && tileview)
     {
-        ESP_LOGI(TAG, "Showing settings screen");
+        ESP_LOGI(TAG, "Navigating to settings tile");
         bsp_display_lock(0);
-        screen_manager_show(settings_screen);
+        lv_tileview_set_tile_by_id(tileview, 0, 1, LV_ANIM_ON);
         bsp_display_unlock();
     }
     else
     {
-        ESP_LOGW(TAG, "Settings screen not created");
+        ESP_LOGW(TAG, "Settings tile or tileview not set");
     }
 }
 
 void settings_hide(void)
 {
-    ESP_LOGI(TAG, "Hiding settings screen");
-    bsp_display_lock(0);
-    screen_manager_go_back();
-    bsp_display_unlock();
+    if (tileview)
+    {
+        ESP_LOGI(TAG, "Returning to watchface tile");
+        bsp_display_lock(0);
+        lv_tileview_set_tile_by_id(tileview, 0, 0, LV_ANIM_ON);
+        bsp_display_unlock();
+    }
 }
 
 lv_obj_t *settings_get_screen(void)
 {
     return settings_screen;
+}
+
+void settings_set_tileview(lv_obj_t *tv)
+{
+    tileview = tv;
+    ESP_LOGI(TAG, "Tileview reference set: %p", tileview);
 }
