@@ -64,9 +64,9 @@
 - [x] Main settings menu screen
 - [x] Navigation system (back button, menu items)
 - [x] Settings storage layer (NVS wrapper)
-- [ ] Clear data/factory reset option
-- [ ] Reset uptime option
-- [ ] Show used flash/RAM statistics
+- [x] Clear data/factory reset option
+- [x] Reset uptime option
+- [x] Show used flash/RAM statistics
 
 ### Display Settings
 

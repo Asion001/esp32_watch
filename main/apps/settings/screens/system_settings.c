@@ -6,14 +6,126 @@
 #include "system_settings.h"
 #include "screen_manager.h"
 #include "uptime_tracker.h"
+#include "settings_storage.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
+#include "esp_spi_flash.h"
 #include "bsp/esp-bsp.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char *TAG = "SystemSettings";
 
 // UI elements
 static lv_obj_t *system_settings_screen = NULL;
 static lv_obj_t *confirmation_msgbox = NULL;
+
+/**
+ * @brief Factory reset yes button callback
+ */
+static void factory_reset_yes_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_CLICKED)
+    {
+        ESP_LOGI(TAG, "User confirmed factory reset");
+
+        // Perform factory reset
+        esp_err_t ret = settings_erase_all();
+        if (ret == ESP_OK)
+        {
+            ESP_LOGI(TAG, "Settings erased successfully");
+            
+            // Also reset uptime
+            uptime_tracker_reset();
+
+            // Show success message
+            lv_obj_t *success_msgbox = lv_msgbox_create(lv_layer_top());
+            lv_msgbox_add_title(success_msgbox, "Success");
+            lv_msgbox_add_text(success_msgbox, "All settings cleared.\nDevice will restart.");
+            lv_msgbox_add_close_button(success_msgbox);
+            lv_obj_center(success_msgbox);
+            
+            // Schedule restart after 3 seconds
+            ESP_LOGI(TAG, "Restarting in 3 seconds...");
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            esp_restart();
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Factory reset failed: %s", esp_err_to_name(ret));
+
+            // Show error message
+            lv_obj_t *error_msgbox = lv_msgbox_create(lv_layer_top());
+            lv_msgbox_add_title(error_msgbox, "Error");
+            lv_msgbox_add_text(error_msgbox, "Failed to reset settings.");
+            lv_msgbox_add_close_button(error_msgbox);
+            lv_obj_center(error_msgbox);
+        }
+
+        // Close confirmation dialog
+        if (confirmation_msgbox)
+        {
+            lv_msgbox_close(confirmation_msgbox);
+            confirmation_msgbox = NULL;
+        }
+    }
+}
+
+/**
+ * @brief Factory reset no button callback
+ */
+static void factory_reset_no_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_CLICKED)
+    {
+        ESP_LOGI(TAG, "User cancelled factory reset");
+
+        // Close confirmation dialog
+        if (confirmation_msgbox)
+        {
+            lv_msgbox_close(confirmation_msgbox);
+            confirmation_msgbox = NULL;
+        }
+    }
+}
+
+/**
+ * @brief Factory reset button callback
+ */
+static void factory_reset_cb(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_CLICKED)
+    {
+        ESP_LOGI(TAG, "Factory reset button clicked");
+
+        // Create confirmation dialog
+        confirmation_msgbox = lv_msgbox_create(lv_layer_top());
+        lv_msgbox_add_title(confirmation_msgbox, "Factory Reset");
+        lv_msgbox_add_text(confirmation_msgbox,
+                           "This will erase ALL settings:\n"
+                           "- Display settings\n"
+                           "- WiFi credentials\n"
+                           "- Uptime data\n\n"
+                           "Device will restart.\n\n"
+                           "Continue?");
+
+        lv_obj_t *yes_btn = lv_msgbox_add_footer_button(confirmation_msgbox, "Yes");
+        lv_obj_t *no_btn = lv_msgbox_add_footer_button(confirmation_msgbox, "No");
+
+        lv_obj_add_event_cb(yes_btn, factory_reset_yes_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_add_event_cb(no_btn, factory_reset_no_cb, LV_EVENT_CLICKED, NULL);
+
+        lv_obj_set_style_bg_color(yes_btn, lv_color_hex(0xFF0000), 0);
+        lv_obj_center(confirmation_msgbox);
+    }
+}
 
 /**
  * @brief Yes button callback
@@ -146,13 +258,58 @@ static void create_system_settings_ui(lv_obj_t *parent)
     lv_label_set_long_mode(desc_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(desc_label, LV_PCT(85));
 
-    // Placeholder for future system options
-    lv_obj_t *info_label = lv_label_create(container);
-    lv_label_set_text(info_label, "\nMore system options coming soon:\n- Factory reset\n- Storage info");
-    lv_obj_set_style_text_font(info_label, &lv_font_montserrat_12, 0);
-    lv_obj_set_style_text_color(info_label, lv_color_hex(0x666666), 0);
-    lv_label_set_long_mode(info_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(info_label, LV_PCT(85));
+    // Factory Reset Button
+    lv_obj_t *factory_reset_btn = lv_btn_create(container);
+    lv_obj_set_size(factory_reset_btn, LV_PCT(90), 50);
+    lv_obj_set_style_bg_color(factory_reset_btn, lv_color_hex(0xFF0000), 0);
+    lv_obj_add_event_cb(factory_reset_btn, factory_reset_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *factory_label = lv_label_create(factory_reset_btn);
+    lv_label_set_text(factory_label, LV_SYMBOL_TRASH " Factory Reset");
+    lv_obj_set_style_text_font(factory_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(factory_label);
+
+    // Factory reset description
+    lv_obj_t *factory_desc = lv_label_create(container);
+    lv_label_set_text(factory_desc,
+                      "Erase all settings and restart.\n"
+                      "Use with caution!");
+    lv_obj_set_style_text_font(factory_desc, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(factory_desc, lv_color_hex(0xFF8888), 0);
+    lv_label_set_long_mode(factory_desc, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(factory_desc, LV_PCT(85));
+
+    // Storage Information Section
+    lv_obj_t *storage_title = lv_label_create(container);
+    lv_label_set_text(storage_title, "\nStorage Information:");
+    lv_obj_set_style_text_font(storage_title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(storage_title, lv_color_white(), 0);
+
+    // Get RAM info
+    size_t free_heap = esp_get_free_heap_size();
+    size_t min_free_heap = esp_get_minimum_free_heap_size();
+    size_t total_heap = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
+    
+    // Get flash info
+    size_t flash_size = spi_flash_get_chip_size();
+    
+    // Create storage info text
+    char storage_info[256];
+    snprintf(storage_info, sizeof(storage_info),
+             "RAM Free: %u KB / %u KB\n"
+             "RAM Min Free: %u KB\n"
+             "Flash: %u MB",
+             (unsigned)(free_heap / 1024),
+             (unsigned)(total_heap / 1024),
+             (unsigned)(min_free_heap / 1024),
+             (unsigned)(flash_size / (1024 * 1024)));
+
+    lv_obj_t *storage_info_label = lv_label_create(container);
+    lv_label_set_text(storage_info_label, storage_info);
+    lv_obj_set_style_text_font(storage_info_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(storage_info_label, lv_color_hex(0x888888), 0);
+    lv_label_set_long_mode(storage_info_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(storage_info_label, LV_PCT(85));
 
     ESP_LOGI(TAG, "System settings UI created");
 }
