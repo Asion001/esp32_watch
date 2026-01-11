@@ -77,12 +77,12 @@
 
 ### WiFi Configuration
 
-- [ ] WiFi manager integration
-- [ ] SSID scanning and list display
+- [x] WiFi manager integration (component complete with 15 API functions)
+- [ ] SSID scanning and list display (UI screen)
 - [ ] Password input screen (virtual keyboard)
-- [ ] Connection status indicator
-- [ ] WiFi credential storage (secure NVS)
-- [ ] Auto-reconnect on boot
+- [ ] Connection status indicator (UI screen)
+- [x] WiFi credential storage (secure NVS via settings_storage)
+- [x] Auto-reconnect on boot (wifi_manager_auto_connect)
 
 ### Time Synchronization
 
