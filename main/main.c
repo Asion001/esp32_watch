@@ -178,10 +178,12 @@ void app_main(void)
     ESP_LOGI(TAG, "Default active screen at startup: %p", default_screen);
 
     // Create main tileview for watchface <-> settings navigation
-    lv_obj_t *tileview = lv_tileview_create(lv_screen_active());
+    // Create a new screen for the tileview
+    lv_obj_t *tileview_screen = lv_obj_create(NULL);
+    lv_obj_t *tileview = lv_tileview_create(tileview_screen);
     lv_obj_set_size(tileview, LV_PCT(100), LV_PCT(100));
     lv_obj_clear_flag(tileview, LV_OBJ_FLAG_SCROLLABLE);
-    ESP_LOGI(TAG, "Tileview created: %p", tileview);
+    ESP_LOGI(TAG, "Tileview created: %p on screen: %p", tileview, tileview_screen);
 
     // Add watchface tile (row 0, col 0) - home tile, can swipe down
     lv_obj_t *watchface_tile = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_BOTTOM);
@@ -203,15 +205,20 @@ void app_main(void)
 
     // Create sub-screens as separate screens (not tiles)
     // These are navigated to from settings menu
-    display_settings_create(lv_screen_active());
-    system_settings_create(lv_screen_active());
-    about_screen_create(lv_screen_active());
-    wifi_settings_create(lv_screen_active());
-    wifi_scan_create(lv_screen_active());
+    // Use the default screen that BSP initialized
+    display_settings_create(default_screen);
+    system_settings_create(default_screen);
+    about_screen_create(default_screen);
+    wifi_settings_create(default_screen);
+    wifi_scan_create(default_screen);
     // Note: wifi_password screen is created on-demand when needed
 
     // Set watchface tile as the active tile initially
     lv_tileview_set_tile_by_index(tileview, 0, 0, LV_ANIM_OFF);
+
+    // CRITICAL: Load the tileview screen to make it visible
+    lv_scr_load(tileview_screen);
+    ESP_LOGI(TAG, "Tileview screen loaded and now active");
 
     // Unlock LVGL
     bsp_display_unlock();
