@@ -1,0 +1,62 @@
+menu "OTA Update Manager"
+
+    config ENABLE_OTA
+        bool "Enable OTA (Over-The-Air) updates"
+        default y
+        help
+            Enable OTA update functionality for firmware updates.
+            When disabled, OTA update UI and functionality won't be compiled.
+
+    config OTA_UPDATE_URL
+        string "Default OTA update URL"
+        depends on ENABLE_OTA
+        default "https://github.com/Asion001/esp32_watch/releases/latest/download/firmware.bin"
+        help
+            Default URL to check for firmware updates.
+            Can be changed at runtime via OTA settings screen.
+            Supports HTTP/HTTPS. GitHub releases URL recommended for CI/CD.
+
+    config OTA_AUTO_CHECK
+        bool "Automatically check for updates on WiFi connect"
+        depends on ENABLE_OTA
+        default n
+        help
+            Automatically check for firmware updates when WiFi connects.
+            If update available, user will be notified.
+
+    config OTA_CHECK_INTERVAL_HOURS
+        int "Auto-check interval (hours)"
+        depends on OTA_AUTO_CHECK
+        default 24
+        range 1 168
+        help
+            How often to check for updates when auto-check is enabled.
+            Range: 1-168 hours (1 hour to 1 week).
+
+    config OTA_BUFFER_SIZE
+        int "OTA download buffer size (bytes)"
+        depends on ENABLE_OTA
+        default 4096
+        range 1024 8192
+        help
+            Buffer size for OTA downloads.
+            Larger values = faster downloads but more RAM usage.
+            4096 bytes is a good balance for most use cases.
+
+    config OTA_ENABLE_HTTPS
+        bool "Enable HTTPS for OTA updates"
+        depends on ENABLE_OTA
+        default y
+        help
+            Enable HTTPS/TLS for secure OTA updates.
+            Recommended for production. Requires valid server certificate.
+
+    config OTA_ENABLE_ROLLBACK
+        bool "Enable automatic rollback on boot failure"
+        depends on ENABLE_OTA
+        default y
+        help
+            Automatically rollback to previous firmware if new version fails to boot.
+            Highly recommended for production deployments.
+
+endmenu

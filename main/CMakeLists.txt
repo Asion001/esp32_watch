@@ -10,18 +10,22 @@ if(NOT CONFIG_ENABLE_WIFI)
     list(FILTER APP_SOURCES EXCLUDE REGEX "apps/settings/screens/wifi_.*\\.c$")
 endif()
 
-# Build list of required components based on configuration
-set(COMPONENT_REQUIRES pcf85063_rtc axp2101_pmu sleep_manager uptime_tracker settings_storage screen_manager button_handler)
-
-# Conditionally add WiFi manager
-if(CONFIG_ENABLE_WIFI)
-    list(APPEND COMPONENT_REQUIRES wifi_manager)
-endif()
-
-# Conditionally add OTA manager  
-if(CONFIG_ENABLE_OTA)
-    list(APPEND COMPONENT_REQUIRES ota_manager)
-endif()
+# Build list of required components
+# Note: wifi_manager and ota_manager are always included in REQUIRES
+# because CMake processes component dependencies before CONFIG_ variables
+# are available. The actual WiFi/OTA code is conditionally compiled via
+# preprocessor guards (#ifdef CONFIG_ENABLE_WIFI / CONFIG_ENABLE_OTA).
+set(COMPONENT_REQUIRES 
+    pcf85063_rtc 
+    axp2101_pmu 
+    sleep_manager 
+    uptime_tracker 
+    settings_storage 
+    screen_manager 
+    button_handler
+    wifi_manager
+    ota_manager
+)
 
 idf_component_register(
     SRCS main.c ${APP_SOURCES} ${LV_DEMOS_SOURCES}

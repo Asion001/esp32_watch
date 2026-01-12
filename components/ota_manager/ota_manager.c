@@ -69,7 +69,12 @@ esp_err_t ota_manager_init(void)
 
   // Load auto-check setting
   bool auto_check = false;
-  if (settings_get_bool(OTA_AUTO_CHECK_KEY, CONFIG_OTA_AUTO_CHECK, &auto_check) == ESP_OK) {
+#ifdef CONFIG_OTA_AUTO_CHECK
+  bool default_auto_check = CONFIG_OTA_AUTO_CHECK;
+#else
+  bool default_auto_check = false;
+#endif
+  if (settings_get_bool(OTA_AUTO_CHECK_KEY, default_auto_check, &auto_check) == ESP_OK) {
     ota_mgr.auto_check_enabled = auto_check;
   }
 
