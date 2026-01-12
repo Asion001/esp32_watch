@@ -56,7 +56,9 @@
 ### Other
 
 - [x] Integrate build_time.h for compile-time RTC initialization
-- [x] Save and show uptime to test battery consumption over time 
+- [x] Save and show uptime to test battery consumption over time
+- [x] Config to disable battery charging to test power draw without charging
+- [x] After night of testing, watch crashed and total uptime incorrect with current time not in sync - investigate
 
 ### Settings UI
 

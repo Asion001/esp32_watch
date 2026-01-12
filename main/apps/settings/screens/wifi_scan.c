@@ -128,23 +128,48 @@ static void start_scan(void)
     return;
   }
 
-  // Wait for scan to complete (typically 1-3 seconds)
-  vTaskDelay(pdMS_TO_TICKS(3000));
+  // Wait for scan to complete with timeout
+  // Scan time: ~11 channels * 300ms max = ~3.3 seconds + overhead
+  const int timeout_ms = 5000;
+  const int check_interval_ms = 100;
+  int waited_ms = 0;
+
+  while (waited_ms < timeout_ms)
+  {
+    vTaskDelay(pdMS_TO_TICKS(check_interval_ms));
+    waited_ms += check_interval_ms;
+
+    wifi_state_t state = wifi_manager_get_state();
+    if (state != WIFI_STATE_SCANNING)
+    {
+      // Scan completed
+      break;
+    }
+  }
 
   // Get scan results
   scan_count = 20; // Max 20 APs
+  ESP_LOGI(TAG, "Requesting scan results, max count: %d", scan_count);
   ret = wifi_manager_get_scan_results(scan_results, &scan_count);
 
   if (ret == ESP_OK)
   {
     ESP_LOGI(TAG, "Found %d networks", scan_count);
+
+    // Debug: Log first few SSIDs
+    for (int i = 0; i < (scan_count < 3 ? scan_count : 3); i++)
+    {
+      ESP_LOGI(TAG, "  AP[%d]: %s (RSSI: %d)", i, scan_results[i].ssid,
+               scan_results[i].rssi);
+    }
+
     update_ap_list();
   }
   else
   {
     ESP_LOGE(TAG, "Failed to get scan results: %s", esp_err_to_name(ret));
     bsp_display_lock(0);
-    lv_label_set_text(loading_label, "No networks found");
+    lv_label_set_text(loading_label, "Scan failed");
     bsp_display_unlock();
   }
 }

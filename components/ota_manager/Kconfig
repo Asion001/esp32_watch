@@ -1,4 +1,4 @@
-menu "OTA Update Manager"
+menu "App: OTA Update Manager"
 
     config ENABLE_OTA
         bool "Enable OTA (Over-The-Air) updates"

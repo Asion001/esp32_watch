@@ -19,7 +19,8 @@ static const char *TAG = "ota_manager";
 #define OTA_URL_KEY "ota_url"
 #define OTA_AUTO_CHECK_KEY "ota_auto"
 
-typedef struct {
+typedef struct
+{
   ota_state_t state;
   uint8_t progress;
   ota_callback_t callback;
@@ -34,15 +35,16 @@ static ota_manager_t ota_mgr = {
     .callback = NULL,
     .user_data = NULL,
     .update_url = {0},
-    .auto_check_enabled = false
-};
+    .auto_check_enabled = false};
 
 // HTTP event handler for OTA progress
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
-  switch (evt->event_id) {
+  switch (evt->event_id)
+  {
   case HTTP_EVENT_ON_DATA:
-    if (ota_mgr.callback && evt->data_len > 0) {
+    if (ota_mgr.callback && evt->data_len > 0)
+    {
       // Calculate progress if we know total size
       // This is a simplified version
       ota_mgr.progress = (ota_mgr.progress + 1) % 100;
@@ -61,9 +63,12 @@ esp_err_t ota_manager_init(void)
 
   // Load saved URL from NVS
   char saved_url[256];
-  if (settings_get_string(OTA_URL_KEY, CONFIG_OTA_UPDATE_URL, saved_url, sizeof(saved_url)) == ESP_OK) {
+  if (settings_get_string(OTA_URL_KEY, CONFIG_OTA_UPDATE_URL, saved_url, sizeof(saved_url)) == ESP_OK)
+  {
     strncpy(ota_mgr.update_url, saved_url, sizeof(ota_mgr.update_url) - 1);
-  } else {
+  }
+  else
+  {
     strncpy(ota_mgr.update_url, CONFIG_OTA_UPDATE_URL, sizeof(ota_mgr.update_url) - 1);
   }
 
@@ -74,7 +79,8 @@ esp_err_t ota_manager_init(void)
 #else
   bool default_auto_check = false;
 #endif
-  if (settings_get_bool(OTA_AUTO_CHECK_KEY, default_auto_check, &auto_check) == ESP_OK) {
+  if (settings_get_bool(OTA_AUTO_CHECK_KEY, default_auto_check, &auto_check) == ESP_OK)
+  {
     ota_mgr.auto_check_enabled = auto_check;
   }
 
@@ -84,7 +90,8 @@ esp_err_t ota_manager_init(void)
 
 esp_err_t ota_manager_get_current_version(char *version, size_t max_len)
 {
-  if (!version) return ESP_ERR_INVALID_ARG;
+  if (!version)
+    return ESP_ERR_INVALID_ARG;
 
   const esp_app_desc_t *app_desc = esp_app_get_description();
   strncpy(version, app_desc->version, max_len - 1);
@@ -98,7 +105,8 @@ esp_err_t ota_manager_check_for_update(const char *url, ota_version_info_t *info
   ota_mgr.state = OTA_STATE_CHECKING;
 
   // Simplified version check - in production, fetch version manifest
-  if (info) {
+  if (info)
+  {
     esp_app_desc_t *app_desc = (esp_app_desc_t *)esp_app_get_description();
     strncpy(info->version, app_desc->version, sizeof(info->version) - 1);
     strncpy(info->url, url ? url : ota_mgr.update_url, sizeof(info->url) - 1);
@@ -111,7 +119,8 @@ esp_err_t ota_manager_check_for_update(const char *url, ota_version_info_t *info
 
 esp_err_t ota_manager_start_update(const char *url)
 {
-  if (ota_mgr.state != OTA_STATE_IDLE) {
+  if (ota_mgr.state != OTA_STATE_IDLE)
+  {
     ESP_LOGW(TAG, "OTA already in progress");
     return ESP_ERR_INVALID_STATE;
   }
@@ -122,7 +131,8 @@ esp_err_t ota_manager_start_update(const char *url)
   ota_mgr.state = OTA_STATE_DOWNLOADING;
   ota_mgr.progress = 0;
 
-  if (ota_mgr.callback) {
+  if (ota_mgr.callback)
+  {
     ota_mgr.callback(OTA_STATE_DOWNLOADING, 0, ota_mgr.user_data);
   }
 
@@ -143,18 +153,23 @@ esp_err_t ota_manager_start_update(const char *url)
 
   esp_err_t ret = esp_https_ota(&ota_config);
 
-  if (ret == ESP_OK) {
+  if (ret == ESP_OK)
+  {
     ESP_LOGI(TAG, "OTA update successful! Restarting...");
     ota_mgr.state = OTA_STATE_COMPLETE;
-    if (ota_mgr.callback) {
+    if (ota_mgr.callback)
+    {
       ota_mgr.callback(OTA_STATE_COMPLETE, 100, ota_mgr.user_data);
     }
     vTaskDelay(pdMS_TO_TICKS(1000));
     esp_restart();
-  } else {
+  }
+  else
+  {
     ESP_LOGE(TAG, "OTA update failed: %s", esp_err_to_name(ret));
     ota_mgr.state = OTA_STATE_FAILED;
-    if (ota_mgr.callback) {
+    if (ota_mgr.callback)
+    {
       ota_mgr.callback(OTA_STATE_FAILED, 0, ota_mgr.user_data);
     }
   }
@@ -174,7 +189,8 @@ uint8_t ota_manager_get_progress(void)
 
 esp_err_t ota_manager_set_update_url(const char *url)
 {
-  if (!url) return ESP_ERR_INVALID_ARG;
+  if (!url)
+    return ESP_ERR_INVALID_ARG;
 
   strncpy(ota_mgr.update_url, url, sizeof(ota_mgr.update_url) - 1);
   return settings_set_string(OTA_URL_KEY, url);
@@ -182,7 +198,8 @@ esp_err_t ota_manager_set_update_url(const char *url)
 
 esp_err_t ota_manager_get_update_url(char *url, size_t max_len)
 {
-  if (!url) return ESP_ERR_INVALID_ARG;
+  if (!url)
+    return ESP_ERR_INVALID_ARG;
   strncpy(url, ota_mgr.update_url, max_len - 1);
   url[max_len - 1] = '\0';
   return ESP_OK;

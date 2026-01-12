@@ -14,4 +14,12 @@ menu "App: Power Management"
         range 1 15
         help
             Battery percentage below which critical battery warning is shown.
+    
+    config DISABLE_BATTERY_CHARGING
+        bool "Disable Battery Charging"
+        default n
+        help
+            Disable battery charging via AXP2101 PMU.
+            This is useful for testing power consumption without charging interference.
+            WARNING: Only use this for testing. The battery will not charge while this is enabled.
 endmenu

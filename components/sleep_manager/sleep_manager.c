@@ -16,6 +16,7 @@
 #include "freertos/task.h"
 #include "lvgl.h"
 #include "pmu_axp2101.h"
+#include "uptime_tracker.h"
 
 static const char *TAG = "SleepMgr";
 
@@ -350,6 +351,17 @@ esp_err_t sleep_manager_sleep(void)
   }
 
   ESP_LOGI(TAG, "Entering sleep mode...");
+
+  // Save uptime before sleep to prevent data loss
+  esp_err_t uptime_ret = uptime_tracker_save();
+  if (uptime_ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Failed to save uptime before sleep: %s", esp_err_to_name(uptime_ret));
+  }
+  else
+  {
+    ESP_LOGI(TAG, "Uptime saved before sleep");
+  }
 
   // Lock LVGL before modifying timers
   bsp_display_lock(0);

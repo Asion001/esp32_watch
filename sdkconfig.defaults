@@ -11,6 +11,9 @@ CONFIG_PM_ENABLE=y
 CONFIG_PM_DFS_INIT_AUTO=y
 CONFIG_ESP_WIFI_ENABLE_WPA3_SAE=n
 CONFIG_FREERTOS_HZ=1000
+# Increase system event task stack to prevent WiFi scan crashes
+# WiFi scan allocates large ap_records array on stack in event handler
+CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=6144
 CONFIG_SLEEP_MANAGER_ENABLE=y
 CONFIG_SLEEP_MANAGER_DEBUG_LOGS=y
 CONFIG_CODEC_ES7243_SUPPORT=n

@@ -9,20 +9,27 @@
 
 static const char *TAG = "PMU";
 
-// AXP2101 I2C Address
-#define AXP2101_I2C_ADDR 0x34
-
-// AXP2101 Register Addresses (from datasheet page 24)
-#define AXP2101_REG_STATUS 0x00     // Status register
+// ALWAYS check the datasheet for register definitions AXP2101-PMU-Datasheet.pdf
+#define AXP2101_I2C_ADDR 0x34 // AXP2101 I2C Address
+// REG 00: Status Register 1 (VBUS/ACIN/VBAT present, bit 5: VBUS present)
+#define AXP2101_REG_STATUS 0x00 // Status register
+// REG 01: Status Register 2 (Charge status, bit 6: charging - inverted logic)
 #define AXP2101_REG_CHG_STATUS 0x01 // Charge status register
+// REG 18: Charger/Fuel Gauge/Watchdog Control (page 28, bit 1: Cell Battery charge enable)
+#define AXP2101_REG_CHG_CFG 0x18 // Charger, fuel gauge, watchdog control
+// REG 30: ADC Channel Enable Control
 #define AXP2101_REG_ADC_ENABLE 0x30 // ADC enable control
-#define AXP2101_REG_VBAT_H 0x34     // Battery voltage high byte (14-bit ADC)
-#define AXP2101_REG_VBAT_L 0x35     // Battery voltage low byte
-#define AXP2101_REG_FUEL_GAUGE                                                 \
-  0xA4                          // Battery percentage from fuel gauge (0-100%)
+// REG 34-35: Battery Voltage ADC (14-bit, 1mV/LSB)
+#define AXP2101_REG_VBAT_H 0x34 // Battery voltage high byte (14-bit ADC)
+#define AXP2101_REG_VBAT_L 0x35 // Battery voltage low byte
+// REG A4: Battery Gauge Percentage (0-100%) - NEEDS VERIFICATION
+#define AXP2101_REG_FUEL_GAUGE 0xA4 // Battery percentage from fuel gauge (0-100%)
+// REG 38-39: VBUS Voltage ADC (14-bit, 1mV/LSB)
 #define AXP2101_REG_VBUS_H 0x38 // VBUS voltage high byte
 #define AXP2101_REG_VBUS_L 0x39 // VBUS voltage low byte
-#define AXP2101_REG_VBUS_STATUS 0x00 // VBUS status (bit 5)
+// REG 3A-3B: System Voltage ADC (vsys, NOT vbus)
+#define AXP2101_REG_VSYS_H 0x3A // System voltage high byte
+#define AXP2101_REG_VSYS_L 0x3B // System voltage low byte
 
 // Voltage calculation constants
 #define VBAT_MIN_MV 3300     // 0% battery
@@ -38,8 +45,10 @@ static const char *TAG = "PMU";
 static i2c_master_bus_handle_t i2c_handle = NULL;
 static i2c_master_dev_handle_t pmu_dev = NULL;
 
-esp_err_t axp2101_init(i2c_master_bus_handle_t i2c_bus) {
-  if (!i2c_bus) {
+esp_err_t axp2101_init(i2c_master_bus_handle_t i2c_bus)
+{
+  if (!i2c_bus)
+  {
     ESP_LOGE(TAG, "Invalid I2C bus handle");
     return ESP_ERR_INVALID_ARG;
   }
@@ -54,7 +63,8 @@ esp_err_t axp2101_init(i2c_master_bus_handle_t i2c_bus) {
   };
 
   esp_err_t ret = i2c_master_bus_add_device(i2c_handle, &dev_cfg, &pmu_dev);
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to add PMU device: %s", esp_err_to_name(ret));
     return ret;
   }
@@ -65,22 +75,37 @@ esp_err_t axp2101_init(i2c_master_bus_handle_t i2c_bus) {
   ret = i2c_master_transmit(pmu_dev,
                             (uint8_t[]){AXP2101_REG_ADC_ENABLE, adc_enable}, 2,
                             1000 / portTICK_PERIOD_MS);
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGW(TAG, "Failed to enable ADCs: %s (continuing anyway)",
              esp_err_to_name(ret));
-  } else {
+  }
+  else
+  {
     ESP_LOGI(TAG, "ADC enabled: 0x%02X", adc_enable);
   }
 
   // Small delay to let ADC stabilize
   vTaskDelay(pdMS_TO_TICKS(50));
 
+#ifdef CONFIG_DISABLE_BATTERY_CHARGING
+  // Disable battery charging if configured
+  ESP_LOGW(TAG, "Battery charging DISABLED via Kconfig");
+  ret = axp2101_set_charging_enabled(false);
+  if (ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Failed to disable charging: %s", esp_err_to_name(ret));
+  }
+#endif
+
   ESP_LOGI(TAG, "PMU AXP2101 initialized");
   return ESP_OK;
 }
 
-esp_err_t axp2101_get_battery_voltage(uint16_t *voltage_mv) {
-  if (!pmu_dev || !voltage_mv) {
+esp_err_t axp2101_get_battery_voltage(uint16_t *voltage_mv)
+{
+  if (!pmu_dev || !voltage_mv)
+  {
     ESP_LOGE(TAG, "PMU not initialized or invalid parameter");
     return ESP_ERR_INVALID_STATE;
   }
@@ -92,7 +117,8 @@ esp_err_t axp2101_get_battery_voltage(uint16_t *voltage_mv) {
       i2c_master_transmit_receive(pmu_dev, (uint8_t[]){AXP2101_REG_VBAT_H}, 1,
                                   data, 2, 1000 / portTICK_PERIOD_MS);
 
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to read battery voltage: %s", esp_err_to_name(ret));
     return ret;
   }
@@ -103,14 +129,17 @@ esp_err_t axp2101_get_battery_voltage(uint16_t *voltage_mv) {
   return ESP_OK;
 }
 
-esp_err_t axp2101_get_battery_percent(uint8_t *percent) {
-  if (!percent) {
+esp_err_t axp2101_get_battery_percent(uint8_t *percent)
+{
+  if (!percent)
+  {
     return ESP_ERR_INVALID_ARG;
   }
 
   uint16_t voltage_mv;
   esp_err_t ret = axp2101_get_battery_voltage(&voltage_mv);
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     return ret;
   }
 
@@ -118,15 +147,22 @@ esp_err_t axp2101_get_battery_percent(uint8_t *percent) {
   // 3.3V (0%) -> 3.7V (50%) -> 4.2V (100%)
   int calculated_percent;
 
-  if (voltage_mv <= VBAT_MIN_MV) {
+  if (voltage_mv <= VBAT_MIN_MV)
+  {
     calculated_percent = 0;
-  } else if (voltage_mv >= VBAT_MAX_MV) {
+  }
+  else if (voltage_mv >= VBAT_MAX_MV)
+  {
     calculated_percent = 100;
-  } else if (voltage_mv < VBAT_NOMINAL_MV) {
+  }
+  else if (voltage_mv < VBAT_NOMINAL_MV)
+  {
     // 3.3V to 3.7V range (0% to 50%)
     calculated_percent =
         (voltage_mv - VBAT_MIN_MV) * 50 / (VBAT_NOMINAL_MV - VBAT_MIN_MV);
-  } else {
+  }
+  else
+  {
     // 3.7V to 4.2V range (50% to 100%)
     calculated_percent = 50 + (voltage_mv - VBAT_NOMINAL_MV) * 50 /
                                   (VBAT_MAX_MV - VBAT_NOMINAL_MV);
@@ -140,8 +176,10 @@ esp_err_t axp2101_get_battery_percent(uint8_t *percent) {
   return ESP_OK;
 }
 
-esp_err_t axp2101_is_charging(bool *is_charging) {
-  if (!pmu_dev || !is_charging) {
+esp_err_t axp2101_is_charging(bool *is_charging)
+{
+  if (!pmu_dev || !is_charging)
+  {
     ESP_LOGE(TAG, "PMU not initialized or invalid parameter");
     return ESP_ERR_INVALID_STATE;
   }
@@ -153,7 +191,8 @@ esp_err_t axp2101_is_charging(bool *is_charging) {
       i2c_master_transmit_receive(pmu_dev, (uint8_t[]){AXP2101_REG_CHG_STATUS},
                                   1, &status, 1, 1000 / portTICK_PERIOD_MS);
 
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to read charge status: %s", esp_err_to_name(ret));
     return ret;
   }
@@ -165,8 +204,10 @@ esp_err_t axp2101_is_charging(bool *is_charging) {
   return ESP_OK;
 }
 
-esp_err_t axp2101_is_vbus_present(bool *vbus_present) {
-  if (!pmu_dev || !vbus_present) {
+esp_err_t axp2101_is_vbus_present(bool *vbus_present)
+{
+  if (!pmu_dev || !vbus_present)
+  {
     ESP_LOGE(TAG, "PMU not initialized or invalid parameter");
     return ESP_ERR_INVALID_STATE;
   }
@@ -178,7 +219,8 @@ esp_err_t axp2101_is_vbus_present(bool *vbus_present) {
       i2c_master_transmit_receive(pmu_dev, (uint8_t[]){AXP2101_REG_STATUS}, 1,
                                   &status, 1, 1000 / portTICK_PERIOD_MS);
 
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to read VBUS status: %s", esp_err_to_name(ret));
     return ret;
   }
@@ -190,8 +232,10 @@ esp_err_t axp2101_is_vbus_present(bool *vbus_present) {
 }
 
 esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
-                                        bool *is_charging) {
-  if (!pmu_dev) {
+                                        bool *is_charging)
+{
+  if (!pmu_dev)
+  {
     ESP_LOGE(TAG, "PMU not initialized");
     return ESP_ERR_INVALID_STATE;
   }
@@ -200,18 +244,24 @@ esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
   esp_err_t ret;
 
   // Read voltage with retry
-  if (voltage_mv) {
+  if (voltage_mv)
+  {
     uint16_t temp_voltage = 0;
-    for (int retry = 0; retry < I2C_RETRY_COUNT; retry++) {
+    for (int retry = 0; retry < I2C_RETRY_COUNT; retry++)
+    {
       ret = axp2101_get_battery_voltage(&temp_voltage);
-      if (ret == ESP_OK) {
+      if (ret == ESP_OK)
+      {
         // Sanity check
         if (temp_voltage >= VBAT_ABSOLUTE_MIN_MV &&
-            temp_voltage <= VBAT_ABSOLUTE_MAX_MV) {
+            temp_voltage <= VBAT_ABSOLUTE_MAX_MV)
+        {
           *voltage_mv = temp_voltage;
           success = true;
           break;
-        } else {
+        }
+        else
+        {
           ESP_LOGW(TAG, "Voltage out of range: %u mV (attempt %d)",
                    temp_voltage, retry + 1);
         }
@@ -219,7 +269,8 @@ esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
       vTaskDelay(pdMS_TO_TICKS(10)); // Small delay before retry
     }
 
-    if (!success) {
+    if (!success)
+    {
       ESP_LOGW(TAG,
                "Failed to read valid voltage after %d attempts, using default",
                I2C_RETRY_COUNT);
@@ -228,12 +279,15 @@ esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
   }
 
   // Read percentage with retry
-  if (percent) {
+  if (percent)
+  {
     bool percent_success = false;
     uint8_t temp_percent = 0;
-    for (int retry = 0; retry < I2C_RETRY_COUNT; retry++) {
+    for (int retry = 0; retry < I2C_RETRY_COUNT; retry++)
+    {
       ret = axp2101_get_battery_percent(&temp_percent);
-      if (ret == ESP_OK && temp_percent <= 100) {
+      if (ret == ESP_OK && temp_percent <= 100)
+      {
         *percent = temp_percent;
         percent_success = true;
         success = true;
@@ -242,19 +296,23 @@ esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
       vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-    if (!percent_success) {
+    if (!percent_success)
+    {
       ESP_LOGW(TAG, "Failed to read valid percentage, using default");
       *percent = 50; // Safe default
     }
   }
 
   // Read charging status with retry
-  if (is_charging) {
+  if (is_charging)
+  {
     bool charging_success = false;
     bool temp_charging = false;
-    for (int retry = 0; retry < I2C_RETRY_COUNT; retry++) {
+    for (int retry = 0; retry < I2C_RETRY_COUNT; retry++)
+    {
       ret = axp2101_is_charging(&temp_charging);
-      if (ret == ESP_OK) {
+      if (ret == ESP_OK)
+      {
         *is_charging = temp_charging;
         charging_success = true;
         success = true;
@@ -263,11 +321,62 @@ esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
       vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-    if (!charging_success) {
+    if (!charging_success)
+    {
       ESP_LOGW(TAG, "Failed to read charging status, using default");
       *is_charging = false; // Safe default
     }
   }
 
   return success ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t axp2101_set_charging_enabled(bool enable)
+{
+  if (!pmu_dev)
+  {
+    ESP_LOGE(TAG, "PMU not initialized");
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  uint8_t chg_cfg;
+
+  // Read current charge configuration register
+  esp_err_t ret =
+      i2c_master_transmit_receive(pmu_dev, (uint8_t[]){AXP2101_REG_CHG_CFG}, 1,
+                                  &chg_cfg, 1, 1000 / portTICK_PERIOD_MS);
+
+  if (ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to read charge config: %s", esp_err_to_name(ret));
+    return ret;
+  }
+
+  ESP_LOGI(TAG, "Current charge config: 0x%02X", chg_cfg);
+
+  // Bit 1: Cell Battery charge enable (1=enable, 0=disable)
+  if (enable)
+  {
+    chg_cfg |= 0x02; // Set bit 1
+  }
+  else
+  {
+    chg_cfg &= ~0x02; // Clear bit 1
+  }
+
+  // Write modified configuration
+  ret = i2c_master_transmit(pmu_dev,
+                            (uint8_t[]){AXP2101_REG_CHG_CFG, chg_cfg}, 2,
+                            1000 / portTICK_PERIOD_MS);
+
+  if (ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to write charge config: %s", esp_err_to_name(ret));
+    return ret;
+  }
+
+  ESP_LOGI(TAG, "Charging %s (config: 0x%02X)", enable ? "enabled" : "disabled",
+           chg_cfg);
+
+  return ESP_OK;
 }
