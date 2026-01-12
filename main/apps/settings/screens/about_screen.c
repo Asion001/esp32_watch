@@ -108,7 +108,7 @@ lv_obj_t *about_screen_create(lv_obj_t *parent)
   // Create scrollable container for info
   lv_obj_t *info_container = lv_obj_create(about_screen);
   lv_obj_set_size(info_container, LV_PCT(90), LV_PCT(75));
-  lv_obj_align(info_container, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 30);
+  lv_obj_align(info_container, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 70);
   lv_obj_set_style_bg_color(info_container, lv_color_hex(0x1a1a1a), 0);
   lv_obj_set_style_border_width(info_container, 1, 0);
   lv_obj_set_style_border_color(info_container, lv_color_hex(0x444444), 0);

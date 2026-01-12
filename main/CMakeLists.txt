@@ -11,7 +11,7 @@ if(NOT CONFIG_ENABLE_WIFI)
 endif()
 
 # Build list of required components based on configuration
-set(COMPONENT_REQUIRES pcf85063_rtc axp2101_pmu sleep_manager uptime_tracker settings_storage screen_manager)
+set(COMPONENT_REQUIRES pcf85063_rtc axp2101_pmu sleep_manager uptime_tracker settings_storage screen_manager button_handler)
 
 # Conditionally add WiFi manager
 if(CONFIG_ENABLE_WIFI)
@@ -25,7 +25,7 @@ endif()
 
 idf_component_register(
     SRCS main.c ${APP_SOURCES} ${LV_DEMOS_SOURCES}
-    INCLUDE_DIRS . apps apps/watchface apps/settings apps/settings/screens ${LV_DEMO_DIR}
+    INCLUDE_DIRS . apps apps/common apps/watchface apps/settings apps/settings/screens ${LV_DEMO_DIR}
     REQUIRES ${COMPONENT_REQUIRES})
 
 idf_component_get_property(LVGL_LIB lvgl__lvgl COMPONENT_LIB)

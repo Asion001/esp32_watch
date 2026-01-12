@@ -7,6 +7,7 @@
 #include "../settings.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
+#include "safe_area.h"
 #include "screen_manager.h"
 #include "wifi_manager.h"
 #include "wifi_scan.h"
@@ -25,12 +26,12 @@ static lv_obj_t *disconnect_btn = NULL;
 static lv_obj_t *forget_btn = NULL;
 
 // Forward declarations
-static void back_button_event_cb(lv_event_t *e);
 static void scan_button_event_cb(lv_event_t *e);
 static void disconnect_button_event_cb(lv_event_t *e);
 static void forget_button_event_cb(lv_event_t *e);
 static void update_connection_info(void);
 static const char *get_signal_indicator(int8_t rssi);
+static void wifi_settings_hide(void);
 
 lv_obj_t *wifi_settings_create(lv_obj_t *parent)
 {
@@ -41,32 +42,27 @@ lv_obj_t *wifi_settings_create(lv_obj_t *parent)
     return wifi_settings_screen;
   }
 
-  // Create screen
-  wifi_settings_screen = lv_obj_create(parent);
-  lv_obj_set_size(wifi_settings_screen, LV_HOR_RES, LV_VER_RES);
-  lv_obj_set_style_bg_color(wifi_settings_screen, lv_color_black(), 0);
-  lv_obj_set_style_bg_opa(wifi_settings_screen, LV_OPA_COVER, 0);
-  lv_obj_add_flag(wifi_settings_screen, LV_OBJ_FLAG_HIDDEN);
+  ESP_LOGI(TAG, "Creating WiFi settings screen");
 
-  // Title
-  lv_obj_t *title = lv_label_create(wifi_settings_screen);
-  lv_label_set_text(title, "WiFi");
-  lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+  // Create screen using screen_manager
+  screen_config_t config = {
+      .title = "WiFi",
+      .show_back_button = true,
+      .anim_type = SCREEN_ANIM_HORIZONTAL,
+      .hide_callback = wifi_settings_hide,
+  };
 
-  // Back button
-  lv_obj_t *back_btn = lv_btn_create(wifi_settings_screen);
-  lv_obj_set_size(back_btn, 50, 40);
-  lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-  lv_obj_add_event_cb(back_btn, back_button_event_cb, LV_EVENT_CLICKED, NULL);
-  lv_obj_t *back_label = lv_label_create(back_btn);
-  lv_label_set_text(back_label, LV_SYMBOL_LEFT);
-  lv_obj_center(back_label);
+  wifi_settings_screen = screen_manager_create(&config);
+  if (!wifi_settings_screen)
+  {
+    ESP_LOGE(TAG, "Failed to create WiFi settings screen");
+    return NULL;
+  }
 
   // Container for status info
   lv_obj_t *container = lv_obj_create(wifi_settings_screen);
-  lv_obj_set_size(container, LV_HOR_RES - 40, LV_VER_RES - 100);
-  lv_obj_align(container, LV_ALIGN_TOP_MID, 0, 50);
+  lv_obj_set_size(container, LV_PCT(90), LV_VER_RES - 120);
+  lv_obj_align(container, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 45);
   lv_obj_set_style_bg_color(container, lv_color_hex(0x222222), 0);
   lv_obj_set_style_border_width(container, 1, 0);
   lv_obj_set_style_border_color(container, lv_color_hex(0x444444), 0);
@@ -98,7 +94,7 @@ lv_obj_t *wifi_settings_create(lv_obj_t *parent)
 
   // Scan button
   scan_btn = lv_btn_create(container);
-  lv_obj_set_size(scan_btn, LV_HOR_RES - 80, 50);
+  lv_obj_set_size(scan_btn, LV_PCT(90), 50);
   lv_obj_add_event_cb(scan_btn, scan_button_event_cb, LV_EVENT_CLICKED, NULL);
   lv_obj_t *scan_label = lv_label_create(scan_btn);
   lv_label_set_text(scan_label, "Scan for Networks");
@@ -106,7 +102,7 @@ lv_obj_t *wifi_settings_create(lv_obj_t *parent)
 
   // Disconnect button (hidden by default)
   disconnect_btn = lv_btn_create(container);
-  lv_obj_set_size(disconnect_btn, LV_HOR_RES - 80, 50);
+  lv_obj_set_size(disconnect_btn, LV_PCT(90), 50);
   lv_obj_add_event_cb(disconnect_btn, disconnect_button_event_cb,
                       LV_EVENT_CLICKED, NULL);
   lv_obj_set_style_bg_color(disconnect_btn, lv_color_hex(0xFF6600), 0);
@@ -117,7 +113,7 @@ lv_obj_t *wifi_settings_create(lv_obj_t *parent)
 
   // Forget button (hidden by default)
   forget_btn = lv_btn_create(container);
-  lv_obj_set_size(forget_btn, LV_HOR_RES - 80, 50);
+  lv_obj_set_size(forget_btn, LV_PCT(90), 50);
   lv_obj_add_event_cb(forget_btn, forget_button_event_cb, LV_EVENT_CLICKED,
                       NULL);
   lv_obj_set_style_bg_color(forget_btn, lv_color_hex(0x666666), 0);
@@ -126,24 +122,40 @@ lv_obj_t *wifi_settings_create(lv_obj_t *parent)
   lv_label_set_text(forget_label, "Forget Network");
   lv_obj_center(forget_label);
 
+  ESP_LOGI(TAG, "WiFi settings screen created");
   return wifi_settings_screen;
 }
 
 void wifi_settings_show(void)
 {
-  if (!wifi_settings_screen)
+  if (wifi_settings_screen)
   {
-    ESP_LOGE(TAG, "WiFi settings screen not created");
-    return;
+    ESP_LOGI(TAG, "Showing WiFi settings screen");
+    bsp_display_lock(0);
+    screen_manager_show(wifi_settings_screen);
+    bsp_display_unlock();
+
+    // Update status
+    wifi_settings_update_status();
   }
+  else
+  {
+    ESP_LOGW(TAG, "WiFi settings screen not created");
+  }
+}
 
-  bsp_display_lock(0);
-  lv_obj_clear_flag(wifi_settings_screen, LV_OBJ_FLAG_HIDDEN);
-  lv_scr_load(wifi_settings_screen);
-  bsp_display_unlock();
-
-  // Update status
-  wifi_settings_update_status();
+void wifi_settings_hide(void)
+{
+  ESP_LOGI(TAG, "Hiding WiFi settings screen");
+  // Clear references since screen will be auto-deleted
+  wifi_settings_screen = NULL;
+  status_label = NULL;
+  ssid_label = NULL;
+  signal_label = NULL;
+  ip_label = NULL;
+  scan_btn = NULL;
+  disconnect_btn = NULL;
+  forget_btn = NULL;
 }
 
 void wifi_settings_update_status(void)
@@ -253,16 +265,6 @@ static const char *get_signal_indicator(int8_t rssi)
   else
   {
     return LV_SYMBOL_WIFI; // Weak
-  }
-}
-
-static void back_button_event_cb(lv_event_t *e)
-{
-  ESP_LOGI(TAG, "Back button pressed");
-  lv_obj_t *settings = settings_get_screen();
-  if (settings)
-  {
-    screen_manager_show(settings);
   }
 }
 

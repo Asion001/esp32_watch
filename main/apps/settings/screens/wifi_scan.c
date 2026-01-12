@@ -6,6 +6,7 @@
 #include "wifi_scan.h"
 #include "bsp/esp-bsp.h"
 #include "esp_log.h"
+#include "safe_area.h"
 #include "screen_manager.h"
 #include "wifi_manager.h"
 #include "wifi_password.h"
@@ -24,76 +25,102 @@ static wifi_ap_info_t scan_results[20];
 static uint16_t scan_count = 0;
 
 // Forward declarations
-static void back_button_event_cb(lv_event_t *e);
 static void ap_list_event_cb(lv_event_t *e);
 static void start_scan(void);
 static void update_ap_list(void);
 static const char *get_signal_bars(int8_t rssi);
 static const char *get_security_icon(wifi_auth_mode_t auth);
+static void wifi_scan_hide(void);
 
-lv_obj_t *wifi_scan_create(lv_obj_t *parent) {
-  // Create screen
-  wifi_scan_screen = lv_obj_create(parent);
-  lv_obj_set_size(wifi_scan_screen, LV_HOR_RES, LV_VER_RES);
-  lv_obj_set_style_bg_color(wifi_scan_screen, lv_color_black(), 0);
-  lv_obj_set_style_bg_opa(wifi_scan_screen, LV_OPA_COVER, 0);
-  lv_obj_add_flag(wifi_scan_screen, LV_OBJ_FLAG_HIDDEN);
+lv_obj_t *wifi_scan_create(lv_obj_t *parent)
+{
+  // Return existing screen if already created
+  if (wifi_scan_screen)
+  {
+    ESP_LOGI(TAG, "WiFi scan screen already exists, returning existing");
+    return wifi_scan_screen;
+  }
 
-  // Title
-  lv_obj_t *title = lv_label_create(wifi_scan_screen);
-  lv_label_set_text(title, "WiFi Networks");
-  lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+  ESP_LOGI(TAG, "Creating WiFi scan screen");
 
-  // Back button
-  lv_obj_t *back_btn = lv_btn_create(wifi_scan_screen);
-  lv_obj_set_size(back_btn, 50, 40);
-  lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-  lv_obj_add_event_cb(back_btn, back_button_event_cb, LV_EVENT_CLICKED, NULL);
-  lv_obj_t *back_label = lv_label_create(back_btn);
-  lv_label_set_text(back_label, LV_SYMBOL_LEFT);
-  lv_obj_center(back_label);
+  // Create screen using screen_manager
+  screen_config_t config = {
+      .title = "WiFi Networks",
+      .show_back_button = true,
+      .anim_type = SCREEN_ANIM_HORIZONTAL,
+      .hide_callback = wifi_scan_hide,
+  };
+
+  wifi_scan_screen = screen_manager_create(&config);
+  if (!wifi_scan_screen)
+  {
+    ESP_LOGE(TAG, "Failed to create WiFi scan screen");
+    return NULL;
+  }
 
   // Loading label
   loading_label = lv_label_create(wifi_scan_screen);
   lv_label_set_text(loading_label, "Scanning...");
   lv_obj_set_style_text_font(loading_label, &lv_font_montserrat_16, 0);
+  lv_obj_set_style_text_color(loading_label, lv_color_white(), 0);
   lv_obj_align(loading_label, LV_ALIGN_CENTER, 0, 0);
 
   // AP list (initially hidden)
   ap_list = lv_list_create(wifi_scan_screen);
-  lv_obj_set_size(ap_list, LV_HOR_RES - 20, LV_VER_RES - 70);
-  lv_obj_align(ap_list, LV_ALIGN_TOP_MID, 0, 60);
+  lv_obj_set_size(ap_list, LV_PCT(90), LV_VER_RES - 120);
+  lv_obj_align(ap_list, LV_ALIGN_TOP_MID, 0, SAFE_AREA_TOP + 45);
   lv_obj_set_style_bg_color(ap_list, lv_color_hex(0x111111), 0);
   lv_obj_add_flag(ap_list, LV_OBJ_FLAG_HIDDEN);
 
+  ESP_LOGI(TAG, "WiFi scan screen created");
   return wifi_scan_screen;
 }
 
-void wifi_scan_show(void) {
-  if (!wifi_scan_screen) {
-    ESP_LOGE(TAG, "WiFi scan screen not created");
-    return;
+void wifi_scan_show(void)
+{
+  // Create screen if it doesn't exist
+  if (!wifi_scan_screen)
+  {
+    ESP_LOGI(TAG, "Creating WiFi scan screen on demand");
+    wifi_scan_create(NULL);
   }
 
-  bsp_display_lock(0);
-  lv_obj_clear_flag(wifi_scan_screen, LV_OBJ_FLAG_HIDDEN);
-  lv_scr_load(wifi_scan_screen);
+  if (wifi_scan_screen)
+  {
+    ESP_LOGI(TAG, "Showing WiFi scan screen");
+    bsp_display_lock(0);
+    screen_manager_show(wifi_scan_screen);
 
-  // Show loading, hide list
-  lv_obj_clear_flag(loading_label, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_flag(ap_list, LV_OBJ_FLAG_HIDDEN);
-  bsp_display_unlock();
+    // Show loading, hide list
+    lv_obj_clear_flag(loading_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ap_list, LV_OBJ_FLAG_HIDDEN);
+    bsp_display_unlock();
 
-  // Start scan
-  start_scan();
+    // Start scan
+    start_scan();
+  }
+  else
+  {
+    ESP_LOGE(TAG, "Failed to create WiFi scan screen");
+  }
 }
 
-static void start_scan(void) {
+void wifi_scan_hide(void)
+{
+  ESP_LOGI(TAG, "Hiding WiFi scan screen");
+  // Clear references since screen will be auto-deleted
+  wifi_scan_screen = NULL;
+  ap_list = NULL;
+  loading_label = NULL;
+}
+
+static void start_scan(void)
+{
   ESP_LOGI(TAG, "Starting WiFi scan...");
 
   esp_err_t ret = wifi_manager_scan_start();
-  if (ret != ESP_OK) {
+  if (ret != ESP_OK)
+  {
     ESP_LOGE(TAG, "Failed to start scan: %s", esp_err_to_name(ret));
     bsp_display_lock(0);
     lv_label_set_text(loading_label, "Scan failed");
@@ -108,10 +135,13 @@ static void start_scan(void) {
   scan_count = 20; // Max 20 APs
   ret = wifi_manager_get_scan_results(scan_results, &scan_count);
 
-  if (ret == ESP_OK) {
+  if (ret == ESP_OK)
+  {
     ESP_LOGI(TAG, "Found %d networks", scan_count);
     update_ap_list();
-  } else {
+  }
+  else
+  {
     ESP_LOGE(TAG, "Failed to get scan results: %s", esp_err_to_name(ret));
     bsp_display_lock(0);
     lv_label_set_text(loading_label, "No networks found");
@@ -119,7 +149,8 @@ static void start_scan(void) {
   }
 }
 
-static void update_ap_list(void) {
+static void update_ap_list(void)
+{
   bsp_display_lock(0);
 
   // Hide loading, show list
@@ -129,7 +160,8 @@ static void update_ap_list(void) {
   // Clear existing list
   lv_obj_clean(ap_list);
 
-  if (scan_count == 0) {
+  if (scan_count == 0)
+  {
     lv_obj_add_flag(ap_list, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(loading_label, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(loading_label, "No networks found");
@@ -138,7 +170,8 @@ static void update_ap_list(void) {
   }
 
   // Add APs to list
-  for (uint16_t i = 0; i < scan_count; i++) {
+  for (uint16_t i = 0; i < scan_count; i++)
+  {
     char label_text[64];
     snprintf(label_text, sizeof(label_text), "%s  %s %s",
              get_security_icon(scan_results[i].authmode),
@@ -155,35 +188,44 @@ static void update_ap_list(void) {
   bsp_display_unlock();
 }
 
-static const char *get_signal_bars(int8_t rssi) {
-  if (rssi >= -50) {
+static const char *get_signal_bars(int8_t rssi)
+{
+  if (rssi >= -50)
+  {
     return "****"; // Excellent
-  } else if (rssi >= -60) {
+  }
+  else if (rssi >= -60)
+  {
     return "*** "; // Good
-  } else if (rssi >= -70) {
+  }
+  else if (rssi >= -70)
+  {
     return "**  "; // Fair
-  } else {
+  }
+  else
+  {
     return "*   "; // Weak
   }
 }
 
-static const char *get_security_icon(wifi_auth_mode_t auth) {
-  if (auth == WIFI_AUTH_OPEN) {
+static const char *get_security_icon(wifi_auth_mode_t auth)
+{
+  if (auth == WIFI_AUTH_OPEN)
+  {
     return "O"; // Open network (LV_SYMBOL_UNLOCK not available)
-  } else {
+  }
+  else
+  {
     return "L"; // Secured network (LV_SYMBOL_LOCK not available)
   }
 }
 
-static void back_button_event_cb(lv_event_t *e) {
-  ESP_LOGI(TAG, "Back button pressed");
-  wifi_settings_show();
-}
-
-static void ap_list_event_cb(lv_event_t *e) {
+static void ap_list_event_cb(lv_event_t *e)
+{
   uint16_t index = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
 
-  if (index >= scan_count) {
+  if (index >= scan_count)
+  {
     ESP_LOGE(TAG, "Invalid AP index: %d", index);
     return;
   }

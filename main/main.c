@@ -14,7 +14,7 @@
 #include "apps/watchface/watchface.h"
 #include "bsp/display.h"
 #include "bsp/esp-bsp.h"
-#include "driver/gpio.h"
+#include "button_handler.h"
 #include "esp_check.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -40,142 +40,6 @@ static void wifi_status_callback(wifi_state_t state, void *user_data)
   wifi_settings_update_status();
 }
 #endif
-
-// Button press configuration
-#define BUTTON_LONG_PRESS_MS 3000     // 3 seconds for restart
-#define BUTTON_SHORT_PRESS_MAX_MS 500 // Maximum duration for short press
-#define BUTTON_DEBOUNCE_MS 300        // Ignore button presses within 300ms of last release
-
-/**
- * @brief Button monitoring task for navigation and reset functionality
- */
-static void button_monitor_task(void *pvParameters)
-{
-  ESP_LOGI(TAG, "Button monitor task started");
-
-  // Configure button GPIO as input with pull-up
-  gpio_config_t button_conf = {.pin_bit_mask = (1ULL << BOOT_BUTTON_GPIO),
-                               .mode = GPIO_MODE_INPUT,
-                               .pull_up_en = GPIO_PULLUP_ENABLE,
-                               .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                               .intr_type = GPIO_INTR_DISABLE};
-  gpio_config(&button_conf);
-
-  uint32_t press_start_ms = 0;
-  uint32_t last_release_ms = 0;
-  bool was_pressed = false;
-  bool long_press_triggered = false;
-
-  while (1)
-  {
-    // Button is active-low (pressed = 0)
-    bool is_pressed = (gpio_get_level(BOOT_BUTTON_GPIO) == 0);
-
-    if (is_pressed && !was_pressed)
-    {
-      // Button just pressed
-      uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-
-      // Check debounce time
-      if (last_release_ms > 0 && (current_ms - last_release_ms) < BUTTON_DEBOUNCE_MS)
-      {
-        ESP_LOGD(TAG, "Button press ignored (debounce)");
-        // Ignore this press, it's too soon after last release
-        vTaskDelay(pdMS_TO_TICKS(50));
-        continue;
-      }
-
-      press_start_ms = current_ms;
-      was_pressed = true;
-      long_press_triggered = false;
-      ESP_LOGD(TAG, "Button pressed");
-    }
-    else if (is_pressed && was_pressed)
-    {
-      // Button still pressed - check duration
-      uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-      uint32_t press_duration = current_ms - press_start_ms;
-
-      if (press_duration >= BUTTON_LONG_PRESS_MS && !long_press_triggered)
-      {
-        ESP_LOGI(TAG, "Long press detected - restarting watch...");
-        long_press_triggered = true;
-        vTaskDelay(pdMS_TO_TICKS(100)); // Small delay for log to flush
-        esp_restart();
-      }
-    }
-    else if (!is_pressed && was_pressed)
-    {
-      // Button released
-      uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-      uint32_t press_duration = current_ms - press_start_ms;
-      was_pressed = false;
-      last_release_ms = current_ms;
-
-      // Handle short press - wake screen or navigate back/home
-      if (!long_press_triggered && press_duration < BUTTON_SHORT_PRESS_MAX_MS)
-      {
-        ESP_LOGI(TAG, "Short press detected");
-        vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to ensure log is flushed
-
-#ifdef CONFIG_SLEEP_MANAGER_ENABLE
-        // Check if backlight is off - if so, just wake the screen
-        if (sleep_manager_is_backlight_off())
-        {
-          ESP_LOGI(TAG, "Screen is off - waking screen");
-          sleep_manager_backlight_on();
-          // Don't navigate - just wake the screen
-          ESP_LOGD(TAG, "Button released (screen wake)");
-          continue; // Skip navigation logic
-        }
-#endif
-
-        if (!g_tileview)
-        {
-          ESP_LOGW(TAG, "Tileview not initialized");
-        }
-        else
-        {
-          ESP_LOGI(TAG, "Locking display");
-          bool lock_ok = bsp_display_lock(100); // 100ms timeout
-          ESP_LOGI(TAG, "Lock result: %d", lock_ok);
-
-          if (!lock_ok)
-          {
-            ESP_LOGW(TAG, "Failed to acquire display lock");
-          }
-          else
-          {
-            lv_obj_t *active_screen = lv_scr_act();
-            lv_obj_t *tileview_screen = lv_obj_get_parent(g_tileview);
-
-            ESP_LOGI(TAG, "Screens - active:%p tile:%p", active_screen, tileview_screen);
-
-            // Check if we're on a managed screen (not the tileview screen)
-            if (active_screen != tileview_screen)
-            {
-              // We're on a managed screen (display settings, wifi, etc)
-              ESP_LOGI(TAG, "Going back from managed screen");
-              screen_manager_go_back();
-            }
-            else
-            {
-              // We're on tileview - navigate to watchface tile (0, 0)
-              ESP_LOGI(TAG, "Returning to watchface");
-              lv_tileview_set_tile_by_index(g_tileview, 0, 0, LV_ANIM_ON);
-            }
-            bsp_display_unlock();
-            ESP_LOGI(TAG, "Display unlocked");
-          }
-        }
-      }
-
-      ESP_LOGD(TAG, "Button released (duration: %lu ms)", press_duration);
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(50)); // Check every 50ms
-  }
-}
 
 void app_main(void)
 {
@@ -331,13 +195,9 @@ void app_main(void)
   settings_set_tileview(
       tileview); // Give settings access to tileview for navigation
 
-  // Create sub-screens as separate screens (not tiles)
-  // These are navigated to from settings menu
-  // Use the default screen that BSP initialized
-  // NOTE: Settings screens are now created on-demand when opened
-  // to avoid navigation stack issues. Only wifi_scan needs pre-creation.
-  wifi_scan_create(default_screen);
-  // Note: wifi_password screen is created on-demand when needed
+  // NOTE: All settings sub-screens (wifi_settings, wifi_scan, display_settings, etc.)
+  // are now created on-demand when opened to support auto-delete pattern.
+  // This avoids navigation stack issues and memory leaks.
 
   // Set watchface tile as the active tile initially
   lv_tileview_set_tile_by_index(tileview, 0, 0, LV_ANIM_OFF);
@@ -346,14 +206,17 @@ void app_main(void)
   lv_scr_load(tileview_screen);
   ESP_LOGI(TAG, "Tileview screen loaded and now active");
 
+  // Register tileview screen as root for navigation stack
+  screen_manager_set_root(tileview_screen);
+
   // Unlock LVGL
   bsp_display_unlock();
 
   ESP_LOGI(TAG, "Watch initialized successfully with tileview navigation");
 
-  // Create button monitor task for reset functionality
-  xTaskCreate(button_monitor_task, "button_monitor", 2048, NULL, 5, NULL);
-  ESP_LOGI(
-      TAG,
-      "Button monitor task created (long press power button for 3s to reset)");
+  // Initialize button handler for navigation and reset
+  button_handler_config_t btn_config = BUTTON_HANDLER_CONFIG_DEFAULT();
+  btn_config.tileview = &g_tileview;
+  button_handler_init(&btn_config);
+  ESP_LOGI(TAG, "Button handler initialized (short=back, long 3s=reset)");
 }
