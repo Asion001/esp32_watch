@@ -9,10 +9,11 @@ Short list of what’s next. Implementation later.
 ## Now (Highest Priority)
 
 - [ ] Sleep & power management polish
-  - [ ] Ensure reliable light sleep entry/exit
-  - [ ] Fix any wake issues after sleep (touch or display)
-  - [ ] Confirm LVGL timers/rendering pause/resume paths are safe
+  - [x] Ensure reliable light sleep entry/exit
+  - [x] Fix any wake issues after sleep (touch or display)
+  - [x] Confirm LVGL timers/rendering pause/resume paths are safe
   - [ ] Measure power draw for key scenarios (idle, active, charging)
+    - [ ] Requires external multimeter/bench supply; use power logs for timing
 
 - [x] Settings: show live WiFi connection status
   - [x] Status label updates on connect/disconnect
@@ -23,15 +24,15 @@ Short list of what’s next. Implementation later.
 ## Next (Short Term)
 
 - [ ] Deep sleep strategy
-  - [ ] Decide when to use deep sleep vs light sleep
+  - [x] Decide when to use deep sleep vs light sleep
   - [ ] Preserve state across deep sleep
 
 - [ ] Battery calibration
   - [ ] Improve percentage curve accuracy
 
 - [ ] Reliability checks
-  - [ ] Watchdog for hang detection
-  - [ ] Avoid long I2C blocks on UI thread
+  - [x] Watchdog for hang detection
+  - [x] Avoid long I2C blocks on UI thread
 
 - [ ] OTA updates
   - [ ] Settings UI for triggering OTA and checking new versions
@@ -75,6 +76,11 @@ Short list of what’s next. Implementation later.
 - Sleep manager: add backlight helper stubs when disabled.
 - Sleep manager: abort sleep/wake if LVGL display is missing.
 - Watchface: move RTC/battery I2C reads to background task.
+- Sleep manager: handle light sleep start failures cleanly.
+- Sleep manager: add optional power diagnostics logging.
+- Sleep manager: add display lock retry for sleep/wake.
+- App: add task watchdog option (configurable).
+- Sleep manager: add deep sleep escalation after extended inactivity.
 
 ---
 

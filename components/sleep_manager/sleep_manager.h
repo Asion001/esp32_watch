@@ -13,6 +13,7 @@
 #define SLEEP_MANAGER_H
 
 #include "esp_err.h"
+#include "esp_sleep.h"
 #include "lvgl.h"
 #include "sdkconfig.h"
 #include <stdbool.h>
@@ -25,6 +26,13 @@ extern "C"
 /** Boot button GPIO (hardware button wake source) */
 #define BOOT_BUTTON_GPIO (9)
 
+  typedef enum
+  {
+    SLEEP_MANAGER_SLEEP_TYPE_NONE = 0,
+    SLEEP_MANAGER_SLEEP_TYPE_LIGHT = 1,
+    SLEEP_MANAGER_SLEEP_TYPE_DEEP = 2
+  } sleep_manager_sleep_type_t;
+
 // Only compile if sleep manager is enabled
 #ifdef CONFIG_SLEEP_MANAGER_ENABLE
 
@@ -34,6 +42,12 @@ extern "C"
 
 /** Inactivity timeout before entering sleep (milliseconds) */
 #define SLEEP_TIMEOUT_MS (CONFIG_SLEEP_TIMEOUT_SECONDS * 1000)
+
+#ifdef CONFIG_SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+/** Inactivity timeout before entering deep sleep (milliseconds) */
+#define DEEP_SLEEP_TIMEOUT_MS \
+  (CONFIG_SLEEP_MANAGER_DEEP_SLEEP_TIMEOUT_SECONDS * 1000)
+#endif
 
 /** Touch interrupt GPIO (FT3168 INT pin) */
 #define TOUCH_INT_GPIO (15)
@@ -132,6 +146,17 @@ extern "C"
    */
   bool sleep_manager_is_backlight_off(void);
 
+  /**
+   * @brief Get the last recorded sleep type (RTC retained)
+   *
+   * Returns the previous sleep type preserved across deep sleep.
+   * The value is cleared after it is consumed.
+   *
+   * @param out_type Output pointer for last sleep type
+   * @return true if a stored value was available, false otherwise
+   */
+  bool sleep_manager_get_last_sleep_type(sleep_manager_sleep_type_t *out_type);
+
 #else // !CONFIG_SLEEP_MANAGER_ENABLE
 
 // Stub functions when sleep manager is disabled
@@ -146,6 +171,12 @@ static inline bool sleep_manager_should_turn_off_backlight(void) { return false;
 static inline esp_err_t sleep_manager_backlight_off(void) { return ESP_OK; }
 static inline esp_err_t sleep_manager_backlight_on(void) { return ESP_OK; }
 static inline bool sleep_manager_is_backlight_off(void) { return false; }
+static inline bool sleep_manager_get_last_sleep_type(
+    sleep_manager_sleep_type_t *out_type)
+{
+  (void)out_type;
+  return false;
+}
 
 #endif // CONFIG_SLEEP_MANAGER_ENABLE
 

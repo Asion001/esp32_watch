@@ -17,6 +17,38 @@ menu "App: Display Configuration"
             Time before display turns off due to inactivity.
 endmenu
 
+menu "App: Reliability"
+    config APP_WATCHDOG_ENABLE
+        bool "Enable task watchdog"
+        default n
+        help
+            Enable a task watchdog to detect scheduler hangs.
+
+    config APP_WATCHDOG_TIMEOUT_SECONDS
+        int "Watchdog timeout (seconds)"
+        depends on APP_WATCHDOG_ENABLE
+        default 10
+        range 2 60
+        help
+            Time in seconds before watchdog triggers if not fed.
+
+    config APP_WATCHDOG_FEED_INTERVAL_MS
+        int "Watchdog feed interval (ms)"
+        depends on APP_WATCHDOG_ENABLE
+        default 2000
+        range 250 10000
+        help
+            How often the watchdog feed task resets the watchdog.
+            Must be lower than the watchdog timeout.
+
+    config APP_WATCHDOG_PANIC
+        bool "Trigger panic on watchdog timeout"
+        depends on APP_WATCHDOG_ENABLE
+        default y
+        help
+            Trigger a panic and reboot on watchdog timeout.
+endmenu
+
 menu "App: WiFi Configuration"
     config ENABLE_WIFI
         bool "Enable WiFi functionality"

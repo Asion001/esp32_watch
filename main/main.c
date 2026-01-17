@@ -22,6 +22,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
@@ -34,6 +35,28 @@ static const char *TAG = "Main";
 
 // Store tileview reference for button handler
 static lv_obj_t *g_tileview = NULL;
+
+#ifdef CONFIG_APP_WATCHDOG_ENABLE
+static TaskHandle_t app_watchdog_task_handle = NULL;
+
+static void app_watchdog_task(void *param)
+{
+  (void)param;
+  ESP_LOGI(TAG, "App watchdog task started");
+
+  esp_err_t add_ret = esp_task_wdt_add(NULL);
+  if (add_ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to add watchdog task: %s", esp_err_to_name(add_ret));
+  }
+
+  while (1)
+  {
+    esp_task_wdt_reset();
+    vTaskDelay(pdMS_TO_TICKS(CONFIG_APP_WATCHDOG_FEED_INTERVAL_MS));
+  }
+}
+#endif
 
 #ifdef CONFIG_ENABLE_WIFI
 // WiFi status callback
@@ -56,6 +79,31 @@ void app_main(void)
   esp_log_level_set("*", CONFIG_APP_LOG_LEVEL);
   ESP_LOGI(TAG, "Log level set to: %d", CONFIG_APP_LOG_LEVEL);
   ESP_LOGI(TAG, "Starting ESP32-C6 Watch Firmware");
+
+#ifdef CONFIG_APP_WATCHDOG_ENABLE
+  ESP_LOGI(TAG, "Initializing task watchdog...");
+  esp_task_wdt_config_t wdt_config = {
+      .timeout_ms = CONFIG_APP_WATCHDOG_TIMEOUT_SECONDS * 1000,
+      .idle_core_mask = 0,
+      .trigger_panic = CONFIG_APP_WATCHDOG_PANIC,
+  };
+  esp_err_t wdt_ret = esp_task_wdt_init(&wdt_config);
+  if (wdt_ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to init task watchdog: %s", esp_err_to_name(wdt_ret));
+  }
+  else
+  {
+    BaseType_t task_ret =
+        xTaskCreate(app_watchdog_task, "app_wdt", 2048, NULL, 2,
+                    &app_watchdog_task_handle);
+    if (task_ret != pdPASS)
+    {
+      ESP_LOGE(TAG, "Failed to create watchdog task");
+      app_watchdog_task_handle = NULL;
+    }
+  }
+#endif
 
   // Initialize NVS flash (required by WiFi driver and settings storage)
   ESP_LOGI(TAG, "Initializing NVS...");

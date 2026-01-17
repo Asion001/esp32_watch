@@ -25,6 +25,24 @@ menu "App: Sleep Manager"
             Time in seconds before entering sleep mode due to inactivity.
             Should typically be longer than backlight timeout.
 
+    config SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+        bool "Enable deep sleep after extended inactivity"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Allow the device to enter deep sleep after a longer period of
+            inactivity. Light sleep is used first, and deep sleep is entered
+            after the deep sleep timeout elapses.
+
+    config SLEEP_MANAGER_DEEP_SLEEP_TIMEOUT_SECONDS
+        int "Deep sleep timeout (seconds)"
+        depends on SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+        default 300
+        range 30 3600
+        help
+            Time in seconds before entering deep sleep due to inactivity.
+            Should typically be longer than the light sleep timeout.
+
     config SLEEP_MANAGER_BACKLIGHT_CONTROL
         bool "Control display backlight"
         depends on SLEEP_MANAGER_ENABLE
@@ -100,5 +118,13 @@ menu "App: Sleep Manager"
         help
             Enable detailed debug logs for sleep manager operations.
             Useful for troubleshooting but increases log verbosity.
+
+    config SLEEP_MANAGER_POWER_LOGS
+        bool "Log power diagnostics"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Log battery voltage/percent and charging state at key sleep events.
+            Useful for manual power draw measurement sessions.
 
 endmenu
