@@ -11,8 +11,11 @@
 #include "esp_ota_ops.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "sdkconfig.h"
 #include "settings_storage.h"
 #include <string.h>
+
+#ifdef CONFIG_ENABLE_OTA
 
 static const char *TAG = "ota_manager";
 
@@ -211,3 +214,71 @@ esp_err_t ota_manager_register_callback(ota_callback_t callback, void *user_data
   ota_mgr.user_data = user_data;
   return ESP_OK;
 }
+
+#else
+
+esp_err_t ota_manager_init(void)
+{
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t ota_manager_check_for_update(const char *url, ota_version_info_t *info)
+{
+  (void)url;
+  if (info)
+  {
+    info->version[0] = '\0';
+    info->url[0] = '\0';
+    info->size = 0;
+  }
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t ota_manager_start_update(const char *url)
+{
+  (void)url;
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+ota_state_t ota_manager_get_state(void)
+{
+  return OTA_STATE_IDLE;
+}
+
+uint8_t ota_manager_get_progress(void)
+{
+  return 0;
+}
+
+esp_err_t ota_manager_get_current_version(char *version, size_t max_len)
+{
+  if (version && max_len > 0)
+  {
+    version[0] = '\0';
+  }
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t ota_manager_set_update_url(const char *url)
+{
+  (void)url;
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t ota_manager_get_update_url(char *url, size_t max_len)
+{
+  if (url && max_len > 0)
+  {
+    url[0] = '\0';
+  }
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t ota_manager_register_callback(ota_callback_t callback, void *user_data)
+{
+  (void)callback;
+  (void)user_data;
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+#endif

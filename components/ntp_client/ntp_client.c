@@ -18,9 +18,9 @@
 #include <time.h>
 #include <sys/time.h>
 
-static const char *TAG = "ntp_client";
-
 #ifdef CONFIG_NTP_CLIENT_ENABLE
+
+static const char *TAG = "ntp_client";
 
 #define NTP_SERVER_MAX_LEN 63
 #define TIMEZONE_MAX_LEN 16
