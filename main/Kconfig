@@ -1,0 +1,73 @@
+menu "App: Display Configuration"
+    comment "Watchface and UI settings"
+    
+    config WATCHFACE_UPDATE_INTERVAL_MS
+        int "Watchface Update Interval (ms)"
+        default 1000
+        range 100 5000
+        help
+            How often to update the watchface display.
+            Lower values = smoother updates but higher power consumption.
+    
+    config DISPLAY_TIMEOUT_MS
+        int "Display Timeout (ms)"
+        default 15000
+        range 5000 300000
+        help
+            Time before display turns off due to inactivity.
+endmenu
+
+menu "App: WiFi Configuration"
+    config ENABLE_WIFI
+        bool "Enable WiFi functionality"
+        default y
+        help
+            Enable WiFi manager and related UI screens.
+            Disable this to save flash/RAM on devices that don't need WiFi.
+            When disabled, WiFi menu items and screens won't be compiled.
+
+    config WIFI_AUTO_CONNECT
+        bool "Auto-connect to saved network on boot"
+        depends on ENABLE_WIFI
+        default y
+        help
+            Automatically connect to saved WiFi credentials on startup.
+            If disabled, user must manually connect via settings.
+endmenu
+
+
+
+menu "App: Logging Configuration"
+    comment "Application log verbosity settings"
+
+    choice APP_LOG_LEVEL
+        prompt "Default log verbosity"
+        default APP_LOG_LEVEL_INFO
+        help
+            Specify how much output to see in logs by default.
+            Note that this setting only affects the main application.
+            Each component has its own log level setting.
+
+        config APP_LOG_LEVEL_NONE
+            bool "No output"
+        config APP_LOG_LEVEL_ERROR
+            bool "Error"
+        config APP_LOG_LEVEL_WARN
+            bool "Warning"
+        config APP_LOG_LEVEL_INFO
+            bool "Info"
+        config APP_LOG_LEVEL_DEBUG
+            bool "Debug"
+        config APP_LOG_LEVEL_VERBOSE
+            bool "Verbose"
+    endchoice
+
+    config APP_LOG_LEVEL
+        int
+        default 0 if APP_LOG_LEVEL_NONE
+        default 1 if APP_LOG_LEVEL_ERROR
+        default 2 if APP_LOG_LEVEL_WARN
+        default 3 if APP_LOG_LEVEL_INFO
+        default 4 if APP_LOG_LEVEL_DEBUG
+        default 5 if APP_LOG_LEVEL_VERBOSE
+endmenu

@@ -57,15 +57,15 @@ For more information, code examples, and latest updates, visit:
 
 From the schematic and BSP configuration:
 
-| Peripheral  | Pins                                                                 | Notes                    |
-| ----------- | -------------------------------------------------------------------- | ------------------------ |
-| I2C Bus     | SDA: GPIO8, SCL: GPIO7                                               | Shared by RTC, IMU, PMU  |
-| Display SPI | CS: GPIO5, CLK: GPIO0, DATA0-3: GPIO1-4                              | QSPI interface           |
-| Touch       | RST: GPIO10, INT: GPIO15                                             | FT3168 controller        |
-| LCD Reset   | GPIO11                                                               | Display reset line       |
-| Audio I2S   | SCLK: GPIO20, MCLK: GPIO19, LRCLK: GPIO22, DOUT: GPIO23, DIN: GPIO21 | ES8311 codec             |
-| Power Amp   | GPIO6                                                                | Audio amplifier enable   |
-| Boot Button | GPIO0                                                                | Shared with display PCLK |
+| Peripheral  | Pins                                                                 | Notes                   |
+| ----------- | -------------------------------------------------------------------- | ----------------------- |
+| I2C Bus     | SDA: GPIO8, SCL: GPIO7                                               | Shared by RTC, IMU, PMU |
+| Display SPI | CS: GPIO5, CLK: GPIO0, DATA0-3: GPIO1-4                              | QSPI interface          |
+| Touch       | RST: GPIO10, INT: GPIO15                                             | FT3168 controller       |
+| LCD Reset   | GPIO11                                                               | Display reset line      |
+| Audio I2S   | SCLK: GPIO20, MCLK: GPIO19, LRCLK: GPIO22, DOUT: GPIO23, DIN: GPIO21 | ES8311 codec            |
+| Power Amp   | GPIO18                                                               |                         |
+| Boot Button | GPIO9                                                                | Pull-up, wake source    |
 
 ## License
 

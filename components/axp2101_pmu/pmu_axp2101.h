@@ -80,6 +80,17 @@ extern "C"
     esp_err_t axp2101_get_battery_data_safe(uint16_t *voltage_mv, uint8_t *percent,
                                             bool *is_charging);
 
+    /**
+     * @brief Enable or disable battery charging
+     *
+     * Controls the AXP2101 Cell Battery charge enable bit (register 0x18, bit 1).
+     * Use this to disable charging for accurate power consumption testing.
+     *
+     * @param enable true to enable charging, false to disable
+     * @return esp_err_t ESP_OK on success
+     */
+    esp_err_t axp2101_set_charging_enabled(bool enable);
+
 #ifdef __cplusplus
 }
 #endif

@@ -8,6 +8,25 @@ Modular smartwatch firmware for Waveshare ESP32-C6 Touch AMOLED 2.06 board. Buil
 
 **Prerequisites**: ESP-IDF v5.4.0 minimum (project uses latest I2C master driver API)
 
+## Feature Development Guidelines
+
+**ALL new features MUST follow these rules:**
+
+1. **Configurable via menuconfig**: Every feature needs a `Kconfig` file with enable/disable toggle
+2. **Conditional compilation**: Use `#ifdef CONFIG_*` guards around feature code
+3. **Stub implementations**: Provide no-op functions when feature is disabled
+4. **Always build-test**: Run `idf.py build` after ANY change to verify compilation
+5. **Test both states**: Build with feature enabled AND disabled
+
+**📖 Full Guidelines**: See [.github/copilot-feature-development.md](.github/copilot-feature-development.md) for complete feature development process.
+
+**🔧 Quick Commands**: See `Makefile` for common tasks:
+
+- `make build` - Standard build
+- `make check` - Test all configurations
+- `make test-all` - Build with all features
+- `make test-minimal` - Build with minimal features
+
 ## Build System & Commands
 
 **CRITICAL**: This is an ESP-IDF project. Always use ESP-IDF tools, never raw shell commands for builds.
@@ -57,7 +76,20 @@ Location: `main/apps/<app_name>/`
 1. Create `main/apps/my_app/` directory
 2. Implement `my_app_create(lv_obj_t *parent)` function
 3. Include in `main/main.c` and call in `app_main()`
-4. No CMake changes needed (auto-discovered)
+4. **Update CMakeLists.txt**: Add `apps/my_app` to `INCLUDE_DIRS` and any new component dependencies to `REQUIRES`
+   - Example: If app needs settings, add `apps/settings` to includes and `settings_storage` to requires
+
+**CMake Configuration** (`main/CMakeLists.txt`):
+2_c6_touch_amoled_2_06 /home/asion/dev/my/watch/esp_watch/managed_components/waveshare__esp_lcd_sh8601 /home/asion/dev/src/esp/v5.5.2/esp-idf/compon
+```cmake
+idf_component_register(
+    SRCS main.c ${APP_SOURCES} ${LV_DEMOS_SOURCES}
+    INCLUDE_DIRS . apps apps/watchface apps/settings ${LV_DEMO_DIR}
+    REQUIRES pcf85063_rtc axp2101_pmu sleep_manager uptime_tracker settings_storage)
+```
+
+- `INCLUDE_DIRS`: Add each app subdirectory that has headers other apps need to include
+- `REQUIRES`: Add all component dependencies (drivers and storage components)
 
 ### LVGL Threading Model
 

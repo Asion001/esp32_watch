@@ -50,46 +50,51 @@
 
 ## 🚧 Phase 2: Settings & WiFi Sync - Q1 2026
 
-**Status**: Not Started  
+**Status**: In Progress  
 **Priority**: High
 
 ### Other
-- [ ] Integrate build_time.h for compile-time RTC initialization
-- [ ] Save and show uptime to test battery consumption over time 
+
+- [x] Integrate build_time.h for compile-time RTC initialization
+- [x] Save and show uptime to test battery consumption over time
+- [x] Config to disable battery charging to test power draw without charging
+- [x] After night of testing, watch crashed and total uptime incorrect with current time not in sync - investigate
 
 ### Settings UI
 
-- [ ] Create settings app structure (`main/apps/settings/`)
-- [ ] Main settings menu screen
-- [ ] Navigation system (back button, menu items)
-- [ ] Settings storage layer (NVS wrapper)
+- [x] Create settings app structure (`main/apps/settings/`)
+- [x] Main settings menu screen
+- [x] Navigation system (back button, menu items)
+- [x] Settings storage layer (NVS wrapper)
+- [x] Clear data/factory reset option
+- [x] Reset uptime option
+- [x] Show used flash/RAM statistics
 
 ### Display Settings
 
-- [ ] Brightness adjustment slider (0-100%)
-- [ ] Brightness persistence (save to NVS)
-- [ ] Sleep timeout configuration (5-300 seconds)
-- [ ] Display timeout setting
-- [ ] Auto-brightness toggle (future with light sensor)
+- [x] Brightness adjustment slider (0-100%)
+- [x] Brightness persistence (save to NVS)
+- [x] Sleep timeout configuration (5-300 seconds)
+- [x] Display timeout setting
 
 ### WiFi Configuration
 
-- [ ] WiFi manager integration
-- [ ] SSID scanning and list display
-- [ ] Password input screen (virtual keyboard)
-- [ ] Connection status indicator
-- [ ] WiFi credential storage (secure NVS)
-- [ ] Auto-reconnect on boot
+- [x] WiFi manager integration (component complete with 15 API functions)
+- [x] SSID scanning and list display (UI screen complete)
+- [x] Password input screen (virtual keyboard complete)
+- [x] Connection status indicator (UI screen complete)
+- [x] WiFi credential storage (secure NVS via settings_storage)
+- [x] Auto-reconnect on boot (wifi_manager_auto_connect)
 
 ### Time Synchronization
 
-- [ ] NTP client integration
-- [ ] Manual NTP server configuration
-- [ ] Time zone selection UI (dropdown/list)
-- [ ] DST (Daylight Saving Time) support
-- [ ] Automatic time sync on WiFi connect
-- [ ] RTC auto-update from NTP
-- [ ] Last sync timestamp display
+- [x] NTP client integration
+- [x] Manual NTP server configuration
+- [x] Time zone selection UI (dropdown/list)
+- [x] DST (Daylight Saving Time) support
+- [x] Automatic time sync on WiFi connect
+- [x] RTC auto-update from NTP
+- [x] Last sync timestamp display
 
 ### Storage System
 
@@ -101,6 +106,7 @@
 
 ### Testing & Debug
 
+- [x] Save and show build time and version info
 - [ ] Settings validation
 - [ ] WiFi connection reliability tests
 - [ ] NTP sync error handling
@@ -189,6 +195,7 @@
 - [ ] Selective peripheral power-down
 - [ ] Deep sleep vs light sleep decision logic
 - [ ] Battery level-based sleep strategy
+- [ ] Check if we can use SP32-C6 Low-Power CPU
 
 ### IMU Gesture Detection
 
