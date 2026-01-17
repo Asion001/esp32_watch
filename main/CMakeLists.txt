@@ -5,6 +5,9 @@ file(GLOB_RECURSE LV_DEMOS_SOURCES ${LV_DEMO_DIR}/*.c)
 # Collect all app sources from apps directory (recursively)
 file(GLOB_RECURSE APP_SOURCES "apps/*.c")
 
+# Ensure newly added settings screens are included even without a CMake reconfigure
+list(APPEND APP_SOURCES "apps/settings/screens/ota_settings.c")
+
 # Exclude WiFi UI screens if WiFi is disabled
 if(NOT CONFIG_ENABLE_WIFI)
     list(FILTER APP_SOURCES EXCLUDE REGEX "apps/settings/screens/wifi_.*\\.c$")

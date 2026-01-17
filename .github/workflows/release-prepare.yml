@@ -1,0 +1,138 @@
+name: Prepare Release (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "SemVer bump (major|minor|patch)"
+        required: false
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      version:
+        description: "Exact version (X.Y.Z). Overrides bump if set."
+        required: false
+        type: string
+      base_branch:
+        description: "Base branch for PR"
+        required: false
+        default: "main"
+        type: string
+      tag_prefix:
+        description: "Tag prefix"
+        required: false
+        default: "v"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version, tag, and push
+        env:
+          BUMP: ${{ inputs.bump }}
+          VERSION: ${{ inputs.version }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
+        run: |
+          set -euo pipefail
+
+          version_file="VERSION"
+          if [ ! -f "$version_file" ]; then
+            echo "0.1.0" > "$version_file"
+          fi
+
+          current_version=$(tr -d '\n' < "$version_file")
+          if [ -z "$current_version" ]; then
+            current_version="0.1.0"
+          fi
+
+          semver_regex='^([0-9]+)\.([0-9]+)\.([0-9]+)$'
+
+          bump_version() {
+            local version="$1"
+            local bump="$2"
+            if [[ ! "$version" =~ $semver_regex ]]; then
+              echo "Invalid version format: $version" >&2
+              exit 1
+            fi
+            local major=${BASH_REMATCH[1]}
+            local minor=${BASH_REMATCH[2]}
+            local patch=${BASH_REMATCH[3]}
+            case "$bump" in
+              major) major=$((major+1)); minor=0; patch=0 ;;
+              minor) minor=$((minor+1)); patch=0 ;;
+              patch) patch=$((patch+1)) ;;
+              *) echo "Unsupported bump: $bump" >&2; exit 1 ;;
+            esac
+            echo "${major}.${minor}.${patch}"
+          }
+
+          if [ -n "${VERSION:-}" ]; then
+            new_version="$VERSION"
+            if [[ ! "$new_version" =~ $semver_regex ]]; then
+              echo "Invalid version format: $new_version" >&2
+              exit 1
+            fi
+          else
+            if [ -z "${BUMP:-}" ]; then
+              echo "Provide inputs.version or inputs.bump" >&2
+              exit 1
+            fi
+            new_version=$(bump_version "$current_version" "$BUMP")
+          fi
+
+          if [ "$new_version" = "$current_version" ]; then
+            echo "New version matches current version ($current_version)." >&2
+            exit 1
+          fi
+
+          tag="${TAG_PREFIX}${new_version}"
+          branch="release/${tag}"
+
+          if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag already exists: $tag" >&2
+            exit 1
+          fi
+
+          git checkout -b "$branch"
+          printf "%s\n" "$new_version" > "$version_file"
+          git add -- "$version_file"
+          git commit -m "chore(release): $tag"
+          git tag -a "$tag" -m "Release $tag"
+
+          git push origin "$branch"
+          git push origin "$tag"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          set -euo pipefail
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          existing=$(gh pr list --head "$branch" --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create --base "$BASE_BRANCH" --head "$branch" \
+              --title "chore(release): $(cat VERSION)" \
+              --body "Prepare OTA release $(cat VERSION)."
+          else
+            echo "PR already exists for $branch"
+          fi

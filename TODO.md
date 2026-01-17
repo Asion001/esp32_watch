@@ -25,7 +25,10 @@ Short list of what’s next. Implementation later.
 
 - [ ] Deep sleep strategy
   - [x] Decide when to use deep sleep vs light sleep
-  - [ ] Preserve state across deep sleep
+  - [x] Preserve state across deep sleep
+
+- [ ] OTA updates
+  - [x] Settings UI for triggering OTA and checking new versions
 
 - [ ] Battery calibration
   - [ ] Improve percentage curve accuracy
@@ -33,9 +36,6 @@ Short list of what’s next. Implementation later.
 - [ ] Reliability checks
   - [x] Watchdog for hang detection
   - [x] Avoid long I2C blocks on UI thread
-
-- [ ] OTA updates
-  - [ ] Settings UI for triggering OTA and checking new versions
 
 - [ ] Update or cleanup docs/\*.md with latest features and instructions
 
@@ -81,6 +81,7 @@ Short list of what’s next. Implementation later.
 - Sleep manager: add display lock retry for sleep/wake.
 - App: add task watchdog option (configurable).
 - Sleep manager: add deep sleep escalation after extended inactivity.
+- App: restore tile state after deep sleep.
 
 ---
 

@@ -49,6 +49,15 @@ menu "App: Reliability"
             Trigger a panic and reboot on watchdog timeout.
 endmenu
 
+menu "App: State Restore"
+    config APP_STATE_RESTORE_ENABLE
+        bool "Restore UI state after deep sleep"
+        default y
+        help
+            Restore the last active UI tile after a deep sleep reset.
+            Uses NVS to persist the last tile index.
+endmenu
+
 menu "App: WiFi Configuration"
     config ENABLE_WIFI
         bool "Enable WiFi functionality"

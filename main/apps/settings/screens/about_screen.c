@@ -6,6 +6,7 @@
 #include "about_screen.h"
 #include "bsp/esp-bsp.h"
 #include "build_time.h"
+#include "esp_app_desc.h"
 #include "esp_chip_info.h"
 #include "esp_idf_version.h"
 #include "esp_log.h"
@@ -24,9 +25,6 @@ static uint32_t get_flash_size_mb(void)
   sscanf(flash_size, "%uMB", &size_mb);
   return size_mb;
 }
-
-// Firmware version (update this with each release)
-#define FIRMWARE_VERSION "0.2.0-dev"
 
 // UI elements
 static lv_obj_t *about_screen = NULL;
@@ -49,6 +47,11 @@ static void build_info_text(char *buffer, size_t buffer_size)
   uptime_stats_t uptime_stats;
   uptime_tracker_get_stats(&uptime_stats);
 
+  const esp_app_desc_t *app_desc = esp_app_get_description();
+  const char *firmware_version = (app_desc && app_desc->version[0] != '\0')
+                                     ? app_desc->version
+                                     : "unknown";
+
   // Format uptime
   char uptime_str[32];
   char total_uptime_str[32];
@@ -69,7 +72,7 @@ static void build_info_text(char *buffer, size_t buffer_size)
            "Chip: %s Rev %d\n"
            "Cores: %d\n"
            "Flash: %dMB %s",
-           FIRMWARE_VERSION, build_time.tm_year + 1900, build_time.tm_mon + 1,
+           firmware_version, build_time.tm_year + 1900, build_time.tm_mon + 1,
            build_time.tm_mday, build_time.tm_hour, build_time.tm_min,
            uptime_str, total_uptime_str, uptime_stats.boot_count,
            ESP_IDF_VERSION_MAJOR, ESP_IDF_VERSION_MINOR, ESP_IDF_VERSION_PATCH,
