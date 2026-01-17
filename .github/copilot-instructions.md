@@ -15,8 +15,9 @@ Modular smartwatch firmware for Waveshare ESP32-C6 Touch AMOLED 2.06 board. Buil
 1. **Configurable via menuconfig**: Every feature needs a `Kconfig` file with enable/disable toggle
 2. **Conditional compilation**: Use `#ifdef CONFIG_*` guards around feature code
 3. **Stub implementations**: Provide no-op functions when feature is disabled
-4. **Always build-test**: Run `idf.py build` after ANY change to verify compilation
+4. **Always build-test**: Use the ESP-IDF extension "Build your project" after ANY change to verify compilation
 5. **Test both states**: Build with feature enabled AND disabled
+6. **Settings naming**: Any Settings screen title must use the "App: " prefix (e.g., "App: WiFi", "App: Display")
 
 **📖 Full Guidelines**: See [.github/copilot-feature-development.md](.github/copilot-feature-development.md) for complete feature development process.
 
@@ -38,6 +39,32 @@ Modular smartwatch firmware for Waveshare ESP32-C6 Touch AMOLED 2.06 board. Buil
 - **Monitor**: Use extension "Monitor your device" OR `idf.py monitor`
 - **Clean**: `idf.py fullclean` (when SDK config changes)
 - **Config**: `idf.py menuconfig` (for LVGL fonts, board settings)
+
+**After any change**: Run a build via the ESP-IDF extension to confirm it still compiles.
+
+## PDF Documentation Requirements
+
+**IMPORTANT**: Always re-read the relevant PDF datasheets/schematics whenever changing or adding hardware components.
+
+### Open PDFs (Windows)
+
+- File Explorer: double-click the PDF in docs/
+- PowerShell: `Start-Process "docs\ESP32-C6-Series-Datasheet.pdf"`
+- CLI (page text): `python -m pip install pypdf` then `python - <<'PY'
+from pypdf import PdfReader
+r = PdfReader(r"docs\ESP32-C6-Series-Datasheet.pdf")
+print(r.pages[0].extract_text())
+PY`
+
+### Open PDFs (Linux)
+
+- `xdg-open docs/ESP32-C6-Series-Datasheet.pdf`
+- Or use a viewer such as `evince` or `okular`
+- CLI (page text): `python -m pip install pypdf` then `python - <<'PY'
+from pypdf import PdfReader
+r = PdfReader("docs/ESP32-C6-Series-Datasheet.pdf")
+print(r.pages[0].extract_text())
+PY`
 
 ### Required LVGL Fonts (in sdkconfig)
 
@@ -80,7 +107,8 @@ Location: `main/apps/<app_name>/`
    - Example: If app needs settings, add `apps/settings` to includes and `settings_storage` to requires
 
 **CMake Configuration** (`main/CMakeLists.txt`):
-2_c6_touch_amoled_2_06 /home/asion/dev/my/watch/esp_watch/managed_components/waveshare__esp_lcd_sh8601 /home/asion/dev/src/esp/v5.5.2/esp-idf/compon
+2_c6_touch_amoled_2_06 /home/asion/dev/my/watch/esp_watch/managed_components/waveshare\_\_esp_lcd_sh8601 /home/asion/dev/src/esp/v5.5.2/esp-idf/compon
+
 ```cmake
 idf_component_register(
     SRCS main.c ${APP_SOURCES} ${LV_DEMOS_SOURCES}
@@ -277,6 +305,7 @@ lv_label_set_text_fmt(label, LV_SYMBOL_CHARGE " %d%%", percent);
 ## Documentation
 
 - Hardware specs/pins: [README.md](README.md#-hardware-specifications)
-- Build guide: [BUILD.md](BUILD.md)
-- Quick reference: [QUICKSTART.md](QUICKSTART.md)
+- Build guide: [docs/BUILD.md](docs/BUILD.md)
+- Quick reference: [docs/QUICKSTART.md](docs/QUICKSTART.md)
+- Sleep testing: [docs/SLEEP_CONFIG.md](docs/SLEEP_CONFIG.md)
 - Datasheets: [docs/](docs/) (PDFs for all chips)

@@ -20,10 +20,13 @@ Your ESP32-C6 watch firmware is ready with the following features:
 
 ```
 esp_watch/
-├── README.md              # Complete documentation
-├── BUILD.md               # Build instructions
-├── docs/                  # Hardware datasheets (PDFs)
+├── README.md              # Main project overview
+├── TODO.md                # Short task list
+├── docs/                  # Documentation and datasheets
 │   ├── README.md
+│   ├── BUILD.md
+│   ├── QUICKSTART.md
+│   ├── SLEEP_CONFIG.md
 │   ├── AXP2101-PMU-Datasheet.pdf
 │   ├── PCF85063-RTC-Datasheet.pdf
 │   ├── ESP32-C6-Touch-AMOLED-2.06-Schematic.pdf
@@ -184,9 +187,9 @@ lv_obj_t* my_app_create(lv_obj_t *parent) {
 
 ## 📚 Documentation
 
-- **[README.md](README.md)** - Complete project documentation
+- **[README.md](../README.md)** - Complete project documentation
 - **[BUILD.md](BUILD.md)** - Detailed build instructions
-- **[docs/README.md](docs/README.md)** - Hardware datasheets index
+- **[README.md](README.md)** - Hardware datasheets index
 
 ## 🔗 Resources
 

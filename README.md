@@ -41,6 +41,8 @@ Open-source, modular smartwatch firmware for the Waveshare ESP32-C6 Touch AMOLED
 
 ## 🚀 Quick Start
 
+For detailed steps, see [docs/QUICKSTART.md](docs/QUICKSTART.md) and [docs/BUILD.md](docs/BUILD.md).
+
 ### Prerequisites
 
 - ESP-IDF v5.1 or later
@@ -69,7 +71,6 @@ Open-source, modular smartwatch firmware for the Waveshare ESP32-C6 Touch AMOLED
    ```
 
    Enable:
-
    - `CONFIG_LV_FONT_MONTSERRAT_48` (for big time display)
    - `CONFIG_LV_FONT_MONTSERRAT_20` (for date)
    - `CONFIG_LV_FONT_MONTSERRAT_14` (for battery)
@@ -106,8 +107,11 @@ esp_watch/
 │           ├── watchface.c/h       # Main watchface UI
 │           ├── rtc_pcf85063.c/h    # RTC driver
 │           └── pmu_axp2101.c/h     # Battery/power driver
-├── docs/                           # Hardware datasheets
-│   └── README.md                   # Documentation index
+├── docs/                           # Documentation and datasheets
+│   ├── README.md                   # Documentation index
+│   ├── BUILD.md                    # Build instructions
+│   ├── QUICKSTART.md               # Developer quick start
+│   └── SLEEP_CONFIG.md             # Power testing notes
 ├── managed_components/             # ESP-IDF managed dependencies
 │   ├── lvgl__lvgl/                 # LVGL graphics library
 │   └── waveshare__esp32_c6.../     # Board support package
