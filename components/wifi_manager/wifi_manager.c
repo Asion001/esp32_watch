@@ -13,6 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "nvs_flash.h"
+#include "sdkconfig.h"
 #include <string.h>
 
 static const char *TAG = "wifi_manager";
@@ -590,6 +591,17 @@ esp_err_t wifi_manager_auto_connect(void)
 
   if (!wifi_manager_has_credentials())
   {
+#ifdef CONFIG_WIFI_DEFAULT_CREDENTIALS_ENABLE
+    const char *default_ssid = CONFIG_WIFI_DEFAULT_SSID;
+    const char *default_password = CONFIG_WIFI_DEFAULT_PASSWORD;
+
+    if (default_ssid && default_ssid[0] != '\0')
+    {
+      ESP_LOGI(TAG, "Using default WiFi credentials");
+      return wifi_manager_connect(default_ssid, default_password, false);
+    }
+#endif
+
     ESP_LOGI(TAG, "No saved credentials");
     return ESP_ERR_NOT_FOUND;
   }
