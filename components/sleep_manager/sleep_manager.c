@@ -17,6 +17,9 @@
 #include "lvgl.h"
 #include "pmu_axp2101.h"
 #include "uptime_tracker.h"
+#ifdef CONFIG_ENABLE_WIFI
+#include "wifi_manager.h"
+#endif
 #include <string.h>
 
 static const char *TAG = "SleepMgr";
@@ -49,6 +52,41 @@ typedef struct
 #define MAX_TIMERS 8
 static timer_state_t saved_timers[MAX_TIMERS];
 static uint8_t saved_timer_count = 0;
+
+#ifdef CONFIG_SLEEP_MANAGER_WIFI_SUSPEND
+static void sleep_manager_suspend_wifi(void)
+{
+#ifdef CONFIG_ENABLE_WIFI
+  ESP_LOGI(TAG, "Suspending WiFi for sleep");
+  esp_err_t ret = wifi_manager_deinit();
+  if (ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "WiFi deinit failed: %s", esp_err_to_name(ret));
+  }
+#endif
+}
+
+static void sleep_manager_resume_wifi(void)
+{
+#ifdef CONFIG_ENABLE_WIFI
+  ESP_LOGI(TAG, "Resuming WiFi after wake");
+  esp_err_t ret = wifi_manager_init();
+  if (ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "WiFi init failed: %s", esp_err_to_name(ret));
+    return;
+  }
+
+#ifdef CONFIG_WIFI_AUTO_CONNECT
+  esp_err_t auto_ret = wifi_manager_auto_connect();
+  if (auto_ret != ESP_OK && auto_ret != ESP_ERR_NOT_FOUND)
+  {
+    ESP_LOGW(TAG, "WiFi auto-connect failed: %s", esp_err_to_name(auto_ret));
+  }
+#endif
+#endif
+}
+#endif
 
 static bool sleep_manager_lock_display_with_retry(uint32_t timeout_ms,
                                                   uint8_t retries,
@@ -618,6 +656,10 @@ esp_err_t sleep_manager_sleep(void)
   // Turn off display
   display_sleep();
 
+#ifdef CONFIG_SLEEP_MANAGER_WIFI_SUSPEND
+  sleep_manager_suspend_wifi();
+#endif
+
   // Enter light sleep - BLOCKS until wake-up event
 #ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
@@ -763,6 +805,10 @@ esp_err_t sleep_manager_wake(void)
 
   // Mark as awake
   is_sleeping = false;
+
+#ifdef CONFIG_SLEEP_MANAGER_WIFI_SUSPEND
+  sleep_manager_resume_wifi();
+#endif
 
   ESP_LOGI(TAG, "Wake complete");
 

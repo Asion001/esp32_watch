@@ -22,4 +22,11 @@ menu "App: Power Management"
             Disable battery charging via AXP2101 PMU.
             This is useful for testing power consumption without charging interference.
             WARNING: Only use this for testing. The battery will not charge while this is enabled.
+
+    config BATTERY_CALIBRATION_CURVE
+        bool "Use calibrated battery percentage curve"
+        default y
+        help
+            Use a voltage-to-percentage lookup curve tuned for typical single-cell LiPo
+            discharge behavior. Disable to fall back to the simple linear mapping.
 endmenu

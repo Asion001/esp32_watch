@@ -144,4 +144,12 @@ menu "App: Sleep Manager"
             Log battery voltage/percent and charging state at key sleep events.
             Useful for manual power draw measurement sessions.
 
+    config SLEEP_MANAGER_WIFI_SUSPEND
+        bool "Suspend WiFi during sleep"
+        depends on SLEEP_MANAGER_ENABLE && ENABLE_WIFI
+        default n
+        help
+            Deinitialize WiFi when entering sleep and reinitialize on wake.
+            Reduces idle draw but may delay reconnect after wake.
+
 endmenu
