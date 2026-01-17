@@ -17,6 +17,7 @@
 #include "lvgl.h"
 #include "pmu_axp2101.h"
 #include "uptime_tracker.h"
+#include <string.h>
 
 static const char *TAG = "SleepMgr";
 
@@ -29,8 +30,12 @@ static const char *TAG = "SleepMgr";
 
 // Inactivity tracking
 static int64_t last_activity_time = 0;
+static int64_t last_user_activity_time = 0;
 static bool is_sleeping = false;
 static bool is_backlight_off = false;
+
+RTC_DATA_ATTR static sleep_manager_sleep_type_t last_sleep_type =
+    SLEEP_MANAGER_SLEEP_TYPE_NONE;
 
 // Task handle for sleep monitoring
 static TaskHandle_t sleep_task_handle = NULL;
@@ -44,6 +49,60 @@ typedef struct
 #define MAX_TIMERS 8
 static timer_state_t saved_timers[MAX_TIMERS];
 static uint8_t saved_timer_count = 0;
+
+static bool sleep_manager_lock_display_with_retry(uint32_t timeout_ms,
+                                                  uint8_t retries,
+                                                  uint32_t delay_ms)
+{
+  for (uint8_t attempt = 0; attempt <= retries; attempt++)
+  {
+    if (bsp_display_lock(timeout_ms))
+    {
+      return true;
+    }
+
+    if (delay_ms > 0)
+    {
+      vTaskDelay(pdMS_TO_TICKS(delay_ms));
+    }
+  }
+
+  return false;
+}
+
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+static void log_power_state(const char *label)
+{
+  uint16_t voltage_mv = 0;
+  uint8_t percent = 0;
+  bool charging = false;
+  bool vbus = false;
+
+  esp_err_t ret =
+      axp2101_get_battery_data_safe(&voltage_mv, &percent, &charging);
+  esp_err_t vbus_ret = axp2101_is_vbus_present(&vbus);
+
+  if (ret == ESP_OK)
+  {
+    uint16_t volts_int = voltage_mv / 1000;
+    uint16_t volts_frac = (voltage_mv % 1000) / 10;
+    ESP_LOGI(TAG, "Power %s: %u.%02uV %u%% %s vbus=%d", label, volts_int,
+             volts_frac, percent, charging ? "charging" : "discharging",
+             vbus);
+  }
+  else
+  {
+    ESP_LOGW(TAG, "Power %s: battery read failed (%s)", label,
+             esp_err_to_name(ret));
+  }
+
+  if (vbus_ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Power %s: vbus read failed (%s)", label,
+             esp_err_to_name(vbus_ret));
+  }
+}
+#endif
 
 /**
  * @brief Turn off display and backlight (internal helper for sleep)
@@ -65,6 +124,10 @@ static esp_err_t display_sleep(void)
     // Turn off backlight
     bsp_display_backlight_off();
     is_backlight_off = true;
+
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+    log_power_state("backlight_off");
+#endif
 
     // Small delay to allow backlight to fade
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -93,6 +156,10 @@ static esp_err_t display_wake(void)
     bsp_display_backlight_on();
     is_backlight_off = false;
 
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+    log_power_state("backlight_on");
+#endif
+
     ESP_LOGI(TAG, "Display wake (backlight on)");
   }
 #else
@@ -108,6 +175,7 @@ static void pause_lvgl_timers(void)
 {
 #ifdef CONFIG_SLEEP_MANAGER_LVGL_TIMER_PAUSE
   saved_timer_count = 0;
+  memset(saved_timers, 0, sizeof(saved_timers));
 
   // Get first timer
   lv_timer_t *timer = lv_timer_get_next(NULL);
@@ -123,6 +191,16 @@ static void pause_lvgl_timers(void)
 
     saved_timer_count++;
     timer = lv_timer_get_next(timer);
+  }
+
+  if (timer != NULL && saved_timer_count >= MAX_TIMERS)
+  {
+    ESP_LOGW(TAG, "LVGL timer pause limit reached (%d), some timers not paused",
+             MAX_TIMERS);
+  }
+  else if (saved_timer_count == 0)
+  {
+    ESP_LOGI(TAG, "No LVGL timers found to pause");
   }
 
   ESP_LOGI(TAG, "Paused %d LVGL timers", saved_timer_count);
@@ -141,10 +219,15 @@ static void resume_lvgl_timers(void)
   {
     lv_timer_t *timer = saved_timers[i].timer;
 
-    // Resume timer
-    lv_timer_resume(timer);
-    lv_timer_ready(timer); // Force immediate execution
-    SLEEP_LOGD(TAG, "Resumed timer %d", i);
+    if (timer)
+    {
+      // Resume timer
+      lv_timer_resume(timer);
+      lv_timer_ready(timer); // Force immediate execution
+      SLEEP_LOGD(TAG, "Resumed timer %d", i);
+    }
+
+    saved_timers[i].timer = NULL;
   }
 
   ESP_LOGI(TAG, "Resumed %d LVGL timers", saved_timer_count);
@@ -164,6 +247,11 @@ static void global_touch_event_handler(lv_event_t *e)
 
   if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING)
   {
+    if (is_sleeping)
+    {
+      return;
+    }
+
     // Reset inactivity timer on touch
     sleep_manager_reset_timer();
 
@@ -174,6 +262,15 @@ static void global_touch_event_handler(lv_event_t *e)
     }
   }
 }
+
+#ifdef CONFIG_SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+static uint32_t sleep_manager_get_user_inactive_time(void)
+{
+  int64_t now = esp_timer_get_time();
+  int64_t elapsed_us = now - last_user_activity_time;
+  return (uint32_t)(elapsed_us / 1000); // Convert to milliseconds
+}
+#endif
 
 /**
  * @brief Sleep check task - monitors inactivity and triggers backlight off and
@@ -198,6 +295,50 @@ static void sleep_check_task(void *pvParameters)
       ESP_LOGI(TAG, "Backlight inactivity timeout - turning off backlight");
       sleep_manager_backlight_off();
     }
+
+#ifdef CONFIG_SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+    if (!is_sleeping)
+    {
+      uint32_t user_inactive_ms = sleep_manager_get_user_inactive_time();
+      if (user_inactive_ms >= DEEP_SLEEP_TIMEOUT_MS)
+      {
+        bool allow_deep_sleep = true;
+
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SLEEP_ON_USB
+        if (sleep_manager_is_usb_connected())
+        {
+          SLEEP_LOGD(TAG, "USB connected - deep sleep prevented");
+          allow_deep_sleep = false;
+        }
+#endif
+
+#ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
+        if (allow_deep_sleep)
+        {
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+          if (gpio_get_level(TOUCH_INT_GPIO) == 0)
+          {
+            SLEEP_LOGD(TAG, "Touch interrupt active - deep sleep aborted");
+            allow_deep_sleep = false;
+          }
+#endif
+          if (allow_deep_sleep && gpio_get_level(BOOT_BUTTON_GPIO) == 0)
+          {
+            SLEEP_LOGD(TAG, "Button pressed - deep sleep aborted");
+            allow_deep_sleep = false;
+          }
+        }
+#endif
+
+        if (allow_deep_sleep)
+        {
+          is_sleeping = true;
+          display_sleep();
+          sleep_manager_enter_deep_sleep();
+        }
+      }
+    }
+#endif
 
     // Check sleep timeout (only if not already sleeping)
     if (sleep_manager_should_sleep())
@@ -291,30 +432,37 @@ esp_err_t sleep_manager_init(void)
 
   // Initialize activity timer and state
   last_activity_time = esp_timer_get_time();
+  last_user_activity_time = last_activity_time;
   is_sleeping = false;
   is_backlight_off = false;
 
   // Register global touch event handler on input device for backlight wake-up
-  bsp_display_lock(0);
-  lv_display_t *disp = lv_display_get_default();
-  if (disp)
+  if (sleep_manager_lock_display_with_retry(200, 5, 50))
   {
-    // Get the first input device (touchscreen)
-    lv_indev_t *indev = lv_indev_get_next(NULL);
-    if (indev)
+    lv_display_t *disp = lv_display_get_default();
+    if (disp)
     {
-      lv_indev_add_event_cb(indev, global_touch_event_handler,
-                            LV_EVENT_PRESSED, NULL);
-      lv_indev_add_event_cb(indev, global_touch_event_handler,
-                            LV_EVENT_PRESSING, NULL);
-      ESP_LOGI(TAG, "Global touch event handler registered on input device");
+      // Get the first input device (touchscreen)
+      lv_indev_t *indev = lv_indev_get_next(NULL);
+      if (indev)
+      {
+        lv_indev_add_event_cb(indev, global_touch_event_handler,
+                              LV_EVENT_PRESSED, NULL);
+        lv_indev_add_event_cb(indev, global_touch_event_handler,
+                              LV_EVENT_PRESSING, NULL);
+        ESP_LOGI(TAG, "Global touch event handler registered on input device");
+      }
+      else
+      {
+        ESP_LOGW(TAG, "No input device found for event handler registration");
+      }
     }
-    else
-    {
-      ESP_LOGW(TAG, "No input device found for event handler registration");
-    }
+    bsp_display_unlock();
   }
-  bsp_display_unlock();
+  else
+  {
+    ESP_LOGW(TAG, "Failed to acquire display lock for touch handler registration");
+  }
 
   // Create sleep monitoring task
   BaseType_t task_created = xTaskCreate(sleep_check_task, "sleep_check", 2048,
@@ -342,6 +490,50 @@ esp_err_t sleep_manager_init(void)
   return ESP_OK;
 }
 
+bool sleep_manager_get_last_sleep_type(sleep_manager_sleep_type_t *out_type)
+{
+  if (!out_type)
+  {
+    return false;
+  }
+
+  if (last_sleep_type == SLEEP_MANAGER_SLEEP_TYPE_NONE)
+  {
+    return false;
+  }
+
+  *out_type = last_sleep_type;
+  last_sleep_type = SLEEP_MANAGER_SLEEP_TYPE_NONE;
+  return true;
+}
+
+#ifdef CONFIG_SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+static void sleep_manager_enter_deep_sleep(void)
+{
+  ESP_LOGI(TAG, "Entering deep sleep mode...");
+
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+  log_power_state("deep_sleep_enter");
+#endif
+
+  last_sleep_type = SLEEP_MANAGER_SLEEP_TYPE_DEEP;
+
+#ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+  ESP_LOGI(TAG,
+           "Deep sleep (wake sources: touch GPIO%d, button GPIO%d)",
+           TOUCH_INT_GPIO, BOOT_BUTTON_GPIO);
+#else
+  ESP_LOGI(TAG, "Deep sleep (wake sources: button GPIO%d)", BOOT_BUTTON_GPIO);
+#endif
+#else
+  ESP_LOGI(TAG, "Deep sleep (wake sources: none)");
+#endif
+
+  esp_deep_sleep_start();
+}
+#endif
+
 esp_err_t sleep_manager_sleep(void)
 {
   if (is_sleeping)
@@ -350,7 +542,36 @@ esp_err_t sleep_manager_sleep(void)
     return ESP_OK;
   }
 
+#ifdef CONFIG_SLEEP_MANAGER_PREVENT_SLEEP_ON_USB
+  if (sleep_manager_is_usb_connected())
+  {
+    SLEEP_LOGD(TAG, "USB connected - sleep aborted");
+    return ESP_OK;
+  }
+#endif
+
+#ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+  if (gpio_get_level(TOUCH_INT_GPIO) == 0)
+  {
+    SLEEP_LOGD(TAG, "Touch interrupt active - sleep aborted");
+    sleep_manager_reset_timer();
+    return ESP_OK;
+  }
+#endif
+  if (gpio_get_level(BOOT_BUTTON_GPIO) == 0)
+  {
+    SLEEP_LOGD(TAG, "Button pressed - sleep aborted");
+    sleep_manager_reset_timer();
+    return ESP_OK;
+  }
+#endif
+
   ESP_LOGI(TAG, "Entering sleep mode...");
+
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+  log_power_state("sleep_enter");
+#endif
 
   // Save uptime before sleep to prevent data loss
   esp_err_t uptime_ret = uptime_tracker_save();
@@ -364,49 +585,132 @@ esp_err_t sleep_manager_sleep(void)
   }
 
   // Lock LVGL before modifying timers
-  bsp_display_lock(0);
+  if (!sleep_manager_lock_display_with_retry(200, 5, 50))
+  {
+    ESP_LOGW(TAG, "Failed to acquire display lock - sleep aborted");
+    is_sleeping = false;
+    return ESP_ERR_TIMEOUT;
+  }
+
+  lv_display_t *disp = lv_display_get_default();
+  if (!disp)
+  {
+    ESP_LOGW(TAG, "No LVGL display - sleep aborted");
+    bsp_display_unlock();
+    is_sleeping = false;
+    return ESP_ERR_INVALID_STATE;
+  }
 
   // Pause all LVGL timers
   pause_lvgl_timers();
 
 #ifdef CONFIG_SLEEP_MANAGER_LVGL_RENDERING_CONTROL
   // Disable LVGL rendering (optional optimization)
-  lv_display_t *disp = lv_display_get_default();
-  if (disp)
-  {
-    lv_display_enable_invalidation(disp, false);
-    ESP_LOGI(TAG, "LVGL rendering disabled");
-  }
+  lv_display_enable_invalidation(disp, false);
+  ESP_LOGI(TAG, "LVGL rendering disabled");
 #endif
 
   bsp_display_unlock();
 
+  // Mark as sleeping to avoid touch wake interference during entry
+  is_sleeping = true;
+
   // Turn off display
   display_sleep();
 
-  // Mark as sleeping
-  is_sleeping = true;
-
   // Enter light sleep - BLOCKS until wake-up event
-  ESP_LOGI(TAG, "Entering light sleep (wake sources: touch GPIO%d)",
-           TOUCH_INT_GPIO);
+#ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+  ESP_LOGI(TAG,
+           "Entering light sleep (wake sources: touch GPIO%d, button GPIO%d)",
+           TOUCH_INT_GPIO, BOOT_BUTTON_GPIO);
+#else
+  ESP_LOGI(TAG, "Entering light sleep (wake sources: button GPIO%d)",
+           BOOT_BUTTON_GPIO);
+#endif
+#else
+  ESP_LOGI(TAG, "Entering light sleep (wake sources: none)");
+#endif
+
+  last_sleep_type = SLEEP_MANAGER_SLEEP_TYPE_LIGHT;
 
   int64_t sleep_start = esp_timer_get_time();
   esp_err_t ret = esp_light_sleep_start();
+  if (ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Light sleep failed: %s", esp_err_to_name(ret));
+    sleep_manager_wake();
+    return ret;
+  }
   int64_t sleep_duration =
       (esp_timer_get_time() - sleep_start) / 1000; // Convert to ms
 
   // Check wake-up cause
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
-  const char *cause_str = (cause == ESP_SLEEP_WAKEUP_EXT0)    ? "touch"
-                          : (cause == ESP_SLEEP_WAKEUP_TIMER) ? "timer"
-                                                              : "unknown";
+  const char *cause_str = "unknown";
+
+  switch (cause)
+  {
+  case ESP_SLEEP_WAKEUP_GPIO:
+    cause_str = "gpio";
+    break;
+  case ESP_SLEEP_WAKEUP_TIMER:
+    cause_str = "timer";
+    break;
+  case ESP_SLEEP_WAKEUP_UART:
+    cause_str = "uart";
+    break;
+  case ESP_SLEEP_WAKEUP_EXT0:
+    cause_str = "ext0";
+    break;
+  case ESP_SLEEP_WAKEUP_EXT1:
+    cause_str = "ext1";
+    break;
+  case ESP_SLEEP_WAKEUP_TOUCHPAD:
+    cause_str = "touchpad";
+    break;
+  case ESP_SLEEP_WAKEUP_ULP:
+    cause_str = "ulp";
+    break;
+  default:
+    cause_str = "unknown";
+    break;
+  }
 
   ESP_LOGI(TAG, "Woke from light sleep after %lld ms (cause: %s)",
            sleep_duration, cause_str);
 
+#ifdef CONFIG_SLEEP_MANAGER_GPIO_WAKEUP
+  if (cause == ESP_SLEEP_WAKEUP_GPIO)
+  {
+    uint64_t wake_mask = esp_sleep_get_gpio_wakeup_status();
+    if (wake_mask != 0)
+    {
+      if (wake_mask & (1ULL << BOOT_BUTTON_GPIO))
+      {
+        ESP_LOGI(TAG, "Wake source: boot button (GPIO%d)",
+                 BOOT_BUTTON_GPIO);
+      }
+#ifdef CONFIG_SLEEP_MANAGER_TOUCH_WAKEUP
+      if (wake_mask & (1ULL << TOUCH_INT_GPIO))
+      {
+        ESP_LOGI(TAG, "Wake source: touch (GPIO%d)", TOUCH_INT_GPIO);
+      }
+#endif
+    }
+    else
+    {
+      ESP_LOGI(TAG, "Wake source: GPIO (unknown pin)");
+    }
+  }
+#endif
+
   // Wake up display and timers
   sleep_manager_wake();
+
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+  log_power_state("sleep_exit");
+#endif
 
   return ret;
 }
@@ -421,20 +725,32 @@ esp_err_t sleep_manager_wake(void)
 
   ESP_LOGI(TAG, "Waking from sleep mode...");
 
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+  log_power_state("wake_start");
+#endif
+
   // Wake up display
   display_wake();
 
   // Lock LVGL before modifying timers
-  bsp_display_lock(0);
+  if (!sleep_manager_lock_display_with_retry(200, 5, 50))
+  {
+    ESP_LOGW(TAG, "Failed to acquire display lock - wake deferred");
+    return ESP_ERR_TIMEOUT;
+  }
+
+  lv_display_t *disp = lv_display_get_default();
+  if (!disp)
+  {
+    ESP_LOGW(TAG, "No LVGL display - wake aborted");
+    bsp_display_unlock();
+    return ESP_ERR_INVALID_STATE;
+  }
 
 #ifdef CONFIG_SLEEP_MANAGER_LVGL_RENDERING_CONTROL
   // Re-enable LVGL rendering
-  lv_display_t *disp = lv_display_get_default();
-  if (disp)
-  {
-    lv_display_enable_invalidation(disp, true);
-    ESP_LOGI(TAG, "LVGL rendering enabled");
-  }
+  lv_display_enable_invalidation(disp, true);
+  ESP_LOGI(TAG, "LVGL rendering enabled");
 #endif
 
   // Resume all LVGL timers
@@ -442,13 +758,17 @@ esp_err_t sleep_manager_wake(void)
 
   bsp_display_unlock();
 
-  // Reset activity timer
-  sleep_manager_reset_timer();
+  // Reset light sleep activity timer
+  last_activity_time = esp_timer_get_time();
 
   // Mark as awake
   is_sleeping = false;
 
   ESP_LOGI(TAG, "Wake complete");
+
+#ifdef CONFIG_SLEEP_MANAGER_POWER_LOGS
+  log_power_state("wake_complete");
+#endif
 
   return ESP_OK;
 }
@@ -494,7 +814,9 @@ bool sleep_manager_should_sleep(void)
 void sleep_manager_reset_timer(void)
 {
 #ifdef CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER
-  last_activity_time = esp_timer_get_time();
+  int64_t now = esp_timer_get_time();
+  last_activity_time = now;
+  last_user_activity_time = now;
   SLEEP_LOGD(TAG, "Activity timer reset");
 #endif
 }

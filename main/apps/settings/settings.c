@@ -11,6 +11,9 @@
 #include "screens/display_settings.h"
 #include "screens/system_settings.h"
 #include "screens/time_sync.h"
+#ifdef CONFIG_ENABLE_OTA
+#include "screens/ota_settings.h"
+#endif
 #ifdef CONFIG_ENABLE_WIFI
 #include "screens/wifi_settings.h"
 #endif
@@ -91,6 +94,15 @@ static void menu_item_event_cb(lv_event_t *e)
     ESP_LOGI(TAG, "WiFi disabled in menuconfig");
 #endif
   }
+  else if (strcmp(text, "OTA Updates") == 0)
+  {
+#ifdef CONFIG_ENABLE_OTA
+    ota_settings_create(settings_screen);
+    ota_settings_show();
+#else
+    ESP_LOGI(TAG, "OTA disabled in menuconfig");
+#endif
+  }
   else if (strcmp(text, "About") == 0)
   {
     bsp_display_lock(0);
@@ -119,6 +131,9 @@ static void create_main_menu(lv_obj_t *parent)
   add_menu_item(LV_SYMBOL_REFRESH, "Time & Sync");
 #ifdef CONFIG_ENABLE_WIFI
   add_menu_item(LV_SYMBOL_WIFI, "WiFi");
+#endif
+#ifdef CONFIG_ENABLE_OTA
+  add_menu_item(LV_SYMBOL_DOWNLOAD, "OTA Updates");
 #endif
   add_menu_item(LV_SYMBOL_LIST, "About");
 

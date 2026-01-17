@@ -25,6 +25,24 @@ menu "App: Sleep Manager"
             Time in seconds before entering sleep mode due to inactivity.
             Should typically be longer than backlight timeout.
 
+    config SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+        bool "Enable deep sleep after extended inactivity"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Allow the device to enter deep sleep after a longer period of
+            inactivity. Light sleep is used first, and deep sleep is entered
+            after the deep sleep timeout elapses.
+
+    config SLEEP_MANAGER_DEEP_SLEEP_TIMEOUT_SECONDS
+        int "Deep sleep timeout (seconds)"
+        depends on SLEEP_MANAGER_DEEP_SLEEP_ENABLE
+        default 300
+        range 30 3600
+        help
+            Time in seconds before entering deep sleep due to inactivity.
+            Should typically be longer than the light sleep timeout.
+
     config SLEEP_MANAGER_BACKLIGHT_CONTROL
         bool "Control display backlight"
         depends on SLEEP_MANAGER_ENABLE
@@ -74,6 +92,23 @@ menu "App: Sleep Manager"
             Reset inactivity timer when user touches the screen.
             Disable to test automatic sleep regardless of touch activity.
 
+    config SLEEP_MANAGER_SLEEP_INDICATOR
+        bool "Show sleep countdown indicator"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Show a countdown indicator on the watchface before sleep.
+            Useful to give the user a brief warning before the display sleeps.
+
+    config SLEEP_MANAGER_SLEEP_INDICATOR_THRESHOLD_SECONDS
+        int "Sleep indicator threshold (seconds)"
+        depends on SLEEP_MANAGER_SLEEP_INDICATOR
+        default 5
+        range 1 30
+        help
+            Only show the sleep countdown when remaining time is within
+            this threshold. Keep small to avoid UI clutter.
+
     config SLEEP_MANAGER_PREVENT_SLEEP_ON_USB
         bool "Prevent sleep when USB/JTAG connected"
         depends on SLEEP_MANAGER_ENABLE
@@ -100,5 +135,13 @@ menu "App: Sleep Manager"
         help
             Enable detailed debug logs for sleep manager operations.
             Useful for troubleshooting but increases log verbosity.
+
+    config SLEEP_MANAGER_POWER_LOGS
+        bool "Log power diagnostics"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Log battery voltage/percent and charging state at key sleep events.
+            Useful for manual power draw measurement sessions.
 
 endmenu

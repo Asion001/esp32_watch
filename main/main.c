@@ -22,6 +22,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
@@ -34,6 +35,98 @@ static const char *TAG = "Main";
 
 // Store tileview reference for button handler
 static lv_obj_t *g_tileview = NULL;
+static lv_obj_t *g_watchface_tile = NULL;
+static lv_obj_t *g_settings_tile = NULL;
+
+#ifdef CONFIG_APP_STATE_RESTORE_ENABLE
+static int32_t g_saved_tile_row = 0;
+static int32_t g_saved_tile_col = 0;
+
+#define SETTINGS_KEY_TILE_ROW "ui_tile_row"
+#define SETTINGS_KEY_TILE_COL "ui_tile_col"
+
+static void app_state_restore_save_tile(int32_t col, int32_t row)
+{
+  if (col == g_saved_tile_col && row == g_saved_tile_row)
+  {
+    return;
+  }
+
+  esp_err_t row_ret = settings_set_int(SETTINGS_KEY_TILE_ROW, row);
+  esp_err_t col_ret = settings_set_int(SETTINGS_KEY_TILE_COL, col);
+  if (row_ret != ESP_OK || col_ret != ESP_OK)
+  {
+    ESP_LOGW(TAG, "Failed to persist tile state (row=%ld col=%ld)",
+             (long)row, (long)col);
+  }
+  else
+  {
+    g_saved_tile_row = row;
+    g_saved_tile_col = col;
+  }
+}
+
+static void app_state_restore_load_tile(int32_t *col, int32_t *row)
+{
+  int32_t saved_row = 0;
+  int32_t saved_col = 0;
+
+  settings_get_int(SETTINGS_KEY_TILE_ROW, 0, &saved_row);
+  settings_get_int(SETTINGS_KEY_TILE_COL, 0, &saved_col);
+
+  if (saved_row < 0 || saved_row > 1)
+  {
+    saved_row = 0;
+  }
+
+  if (saved_col < 0 || saved_col > 0)
+  {
+    saved_col = 0;
+  }
+
+  *row = saved_row;
+  *col = saved_col;
+  g_saved_tile_row = saved_row;
+  g_saved_tile_col = saved_col;
+}
+
+static void tileview_state_event_cb(lv_event_t *e)
+{
+  lv_obj_t *tileview = lv_event_get_target(e);
+  lv_obj_t *active_tile = lv_tileview_get_tile_active(tileview);
+
+  if (active_tile == g_watchface_tile)
+  {
+    app_state_restore_save_tile(0, 0);
+  }
+  else if (active_tile == g_settings_tile)
+  {
+    app_state_restore_save_tile(0, 1);
+  }
+}
+#endif
+
+#ifdef CONFIG_APP_WATCHDOG_ENABLE
+static TaskHandle_t app_watchdog_task_handle = NULL;
+
+static void app_watchdog_task(void *param)
+{
+  (void)param;
+  ESP_LOGI(TAG, "App watchdog task started");
+
+  esp_err_t add_ret = esp_task_wdt_add(NULL);
+  if (add_ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to add watchdog task: %s", esp_err_to_name(add_ret));
+  }
+
+  while (1)
+  {
+    esp_task_wdt_reset();
+    vTaskDelay(pdMS_TO_TICKS(CONFIG_APP_WATCHDOG_FEED_INTERVAL_MS));
+  }
+}
+#endif
 
 #ifdef CONFIG_ENABLE_WIFI
 // WiFi status callback
@@ -56,6 +149,31 @@ void app_main(void)
   esp_log_level_set("*", CONFIG_APP_LOG_LEVEL);
   ESP_LOGI(TAG, "Log level set to: %d", CONFIG_APP_LOG_LEVEL);
   ESP_LOGI(TAG, "Starting ESP32-C6 Watch Firmware");
+
+#ifdef CONFIG_APP_WATCHDOG_ENABLE
+  ESP_LOGI(TAG, "Initializing task watchdog...");
+  esp_task_wdt_config_t wdt_config = {
+      .timeout_ms = CONFIG_APP_WATCHDOG_TIMEOUT_SECONDS * 1000,
+      .idle_core_mask = 0,
+      .trigger_panic = CONFIG_APP_WATCHDOG_PANIC,
+  };
+  esp_err_t wdt_ret = esp_task_wdt_init(&wdt_config);
+  if (wdt_ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to init task watchdog: %s", esp_err_to_name(wdt_ret));
+  }
+  else
+  {
+    BaseType_t task_ret =
+        xTaskCreate(app_watchdog_task, "app_wdt", 2048, NULL, 2,
+                    &app_watchdog_task_handle);
+    if (task_ret != pdPASS)
+    {
+      ESP_LOGE(TAG, "Failed to create watchdog task");
+      app_watchdog_task_handle = NULL;
+    }
+  }
+#endif
 
   // Initialize NVS flash (required by WiFi driver and settings storage)
   ESP_LOGI(TAG, "Initializing NVS...");
@@ -190,6 +308,7 @@ void app_main(void)
   // For vertical scrolling: col stays 0, row changes (0 -> 1)
   lv_obj_t *watchface_tile =
       lv_tileview_add_tile(tileview, 0, 0, LV_DIR_BOTTOM);
+  g_watchface_tile = watchface_tile;
 
   // Set watchface tile background to black
   lv_obj_set_style_bg_color(watchface_tile, lv_color_black(), 0);
@@ -205,6 +324,7 @@ void app_main(void)
 
   // Add settings tile (col 0, row 1) - below watchface, can swipe up to return
   lv_obj_t *settings_tile = lv_tileview_add_tile(tileview, 0, 1, LV_DIR_TOP);
+  g_settings_tile = settings_tile;
 
   // Set settings tile background to black
   lv_obj_set_style_bg_color(settings_tile, lv_color_black(), 0);
@@ -222,7 +342,25 @@ void app_main(void)
   // This avoids navigation stack issues and memory leaks.
 
   // Set watchface tile as the active tile initially
-  lv_tileview_set_tile_by_index(tileview, 0, 0, LV_ANIM_OFF);
+  int32_t target_tile_col = 0;
+  int32_t target_tile_row = 0;
+
+#ifdef CONFIG_APP_STATE_RESTORE_ENABLE
+  sleep_manager_sleep_type_t last_sleep_type = SLEEP_MANAGER_SLEEP_TYPE_NONE;
+  if (sleep_manager_get_last_sleep_type(&last_sleep_type) &&
+      last_sleep_type == SLEEP_MANAGER_SLEEP_TYPE_DEEP)
+  {
+    app_state_restore_load_tile(&target_tile_col, &target_tile_row);
+    ESP_LOGI(TAG, "Restoring tile after deep sleep: (%ld,%ld)",
+             (long)target_tile_col, (long)target_tile_row);
+  }
+
+  lv_obj_add_event_cb(tileview, tileview_state_event_cb,
+                      LV_EVENT_VALUE_CHANGED, NULL);
+#endif
+
+  lv_tileview_set_tile_by_index(tileview, target_tile_col, target_tile_row,
+                                LV_ANIM_OFF);
 
   // CRITICAL: Load the tileview screen to make it visible
   lv_scr_load(tileview_screen);

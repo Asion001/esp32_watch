@@ -4,6 +4,7 @@
  */
 
 #include "button_handler.h"
+#include "sleep_manager.h"
 #include "screen_manager.h"
 #include "bsp/esp-bsp.h"
 #include "driver/gpio.h"
@@ -53,6 +54,17 @@ static void button_monitor_task(void *pvParameters)
         {
             // Button just pressed
             uint32_t current_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+
+            // Reset sleep inactivity timer on any press
+            sleep_manager_reset_timer();
+
+#ifdef CONFIG_SLEEP_MANAGER_ENABLE
+            // Turn on backlight if it is off
+            if (sleep_manager_is_backlight_off())
+            {
+                sleep_manager_backlight_on();
+            }
+#endif
 
             // Check debounce time
             if (last_release_ms > 0 &&
