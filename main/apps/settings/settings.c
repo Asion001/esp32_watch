@@ -11,7 +11,9 @@
 #include "screens/display_settings.h"
 #include "screens/system_settings.h"
 #include "screens/time_sync.h"
+#ifdef CONFIG_ENABLE_WIFI
 #include "screens/wifi_settings.h"
+#endif
 #include <string.h>
 
 static const char *TAG = "Settings";
@@ -82,8 +84,12 @@ static void menu_item_event_cb(lv_event_t *e)
   }
   else if (strcmp(text, "WiFi") == 0)
   {
+#ifdef CONFIG_ENABLE_WIFI
     wifi_settings_create(settings_screen);
     wifi_settings_show();
+#else
+    ESP_LOGI(TAG, "WiFi disabled in menuconfig");
+#endif
   }
   else if (strcmp(text, "About") == 0)
   {
@@ -111,7 +117,9 @@ static void create_main_menu(lv_obj_t *parent)
   add_menu_item(LV_SYMBOL_EYE_OPEN, "Display");
   add_menu_item(LV_SYMBOL_SETTINGS, "System");
   add_menu_item(LV_SYMBOL_REFRESH, "Time & Sync");
+#ifdef CONFIG_ENABLE_WIFI
   add_menu_item(LV_SYMBOL_WIFI, "WiFi");
+#endif
   add_menu_item(LV_SYMBOL_LIST, "About");
 
   ESP_LOGI(TAG, "Main menu created");
