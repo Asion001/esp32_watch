@@ -24,12 +24,15 @@ static lv_obj_t *ip_label = NULL;
 static lv_obj_t *scan_btn = NULL;
 static lv_obj_t *disconnect_btn = NULL;
 static lv_obj_t *forget_btn = NULL;
+static lv_timer_t *status_timer = NULL;
 
 // Forward declarations
 static void scan_button_event_cb(lv_event_t *e);
 static void disconnect_button_event_cb(lv_event_t *e);
 static void forget_button_event_cb(lv_event_t *e);
 static void update_connection_info(void);
+static void wifi_settings_update_status_internal(bool lock_display);
+static void wifi_status_timer_cb(lv_timer_t *timer);
 static const char *get_signal_indicator(int8_t rssi);
 static void wifi_settings_hide(void);
 
@@ -133,6 +136,11 @@ void wifi_settings_show(void)
     ESP_LOGI(TAG, "Showing WiFi settings screen");
     bsp_display_lock(0);
     screen_manager_show(wifi_settings_screen);
+
+    if (!status_timer)
+    {
+      status_timer = lv_timer_create(wifi_status_timer_cb, 2000, NULL);
+    }
     bsp_display_unlock();
 
     // Update status
@@ -147,6 +155,11 @@ void wifi_settings_show(void)
 void wifi_settings_hide(void)
 {
   ESP_LOGI(TAG, "Hiding WiFi settings screen");
+  if (status_timer)
+  {
+    lv_timer_del(status_timer);
+    status_timer = NULL;
+  }
   // Clear references since screen will be auto-deleted
   wifi_settings_screen = NULL;
   status_label = NULL;
@@ -165,7 +178,20 @@ void wifi_settings_update_status(void)
     return;
   }
 
-  bsp_display_lock(0);
+  wifi_settings_update_status_internal(true);
+}
+
+static void wifi_settings_update_status_internal(bool lock_display)
+{
+  if (!wifi_settings_screen)
+  {
+    return;
+  }
+
+  if (lock_display)
+  {
+    bsp_display_lock(0);
+  }
 
   wifi_state_t state = wifi_manager_get_state();
 
@@ -215,7 +241,16 @@ void wifi_settings_update_status(void)
     break;
   }
 
-  bsp_display_unlock();
+  if (lock_display)
+  {
+    bsp_display_unlock();
+  }
+}
+
+static void wifi_status_timer_cb(lv_timer_t *timer)
+{
+  (void)timer;
+  wifi_settings_update_status_internal(false);
 }
 
 static void update_connection_info(void)
@@ -231,6 +266,10 @@ static void update_connection_info(void)
     snprintf(buffer, sizeof(buffer), "Network: %s", ssid);
     lv_label_set_text(ssid_label, buffer);
   }
+  else
+  {
+    lv_label_set_text(ssid_label, "Network: ---");
+  }
 
   // Get signal strength
   if (wifi_manager_get_rssi(&rssi) == ESP_OK)
@@ -239,12 +278,20 @@ static void update_connection_info(void)
              get_signal_indicator(rssi), rssi);
     lv_label_set_text(signal_label, buffer);
   }
+  else
+  {
+    lv_label_set_text(signal_label, "Signal: ---");
+  }
 
   // Get IP address
   if (wifi_manager_get_ip_address(ip, sizeof(ip)) == ESP_OK)
   {
     snprintf(buffer, sizeof(buffer), "IP: %s", ip);
     lv_label_set_text(ip_label, buffer);
+  }
+  else
+  {
+    lv_label_set_text(ip_label, "IP: ---");
   }
 }
 

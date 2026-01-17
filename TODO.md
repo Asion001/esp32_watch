@@ -14,9 +14,9 @@ Short list of what’s next. Implementation later.
   - [ ] Confirm LVGL timers/rendering pause/resume paths are safe
   - [ ] Measure power draw for key scenarios (idle, active, charging)
 
-- [ ] Settings: show live WiFi connection status
-  - [ ] Status label updates on connect/disconnect
-  - [ ] Display IP / RSSI when connected (if available)
+- [x] Settings: show live WiFi connection status
+  - [x] Status label updates on connect/disconnect
+  - [x] Display IP / RSSI when connected (if available)
 
 ---
 
@@ -35,6 +35,8 @@ Short list of what’s next. Implementation later.
 
 - [ ] OTA updates
   - [ ] Settings UI for triggering OTA and checking new versions
+
+- [ ] Update or cleanup docs/\*.md with latest features and instructions
 
 ---
 
@@ -60,6 +62,19 @@ Short list of what’s next. Implementation later.
 - [ ] Settings for time and date size on watchface
 - [ ] Multiple watchfaces
 - [ ] User documentation for settings and features
+
+---
+
+## Notes (Recent Work)
+
+- Sleep manager: improved wake logging for GPIO sources (button/touch).
+- Button handler: reset sleep timer and wake backlight on button press.
+- Sleep manager: avoid touch handler interference during sleep entry.
+- Sleep manager: handle display lock failures during sleep/wake transitions.
+- Sleep manager: prevent sleep entry when wake GPIO is already active.
+- Sleep manager: add backlight helper stubs when disabled.
+- Sleep manager: abort sleep/wake if LVGL display is missing.
+- Watchface: move RTC/battery I2C reads to background task.
 
 ---
 
