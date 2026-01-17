@@ -11,6 +11,8 @@
 #include "wifi_manager.h"
 #include "wifi_password.h"
 #include "wifi_settings.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string.h>
 
 static const char *TAG = "wifi_scan";
@@ -23,10 +25,12 @@ static lv_obj_t *loading_label = NULL;
 // Scan results
 static wifi_ap_info_t scan_results[20];
 static uint16_t scan_count = 0;
+static bool scan_in_progress = false;
 
 // Forward declarations
 static void ap_list_event_cb(lv_event_t *e);
 static void start_scan(void);
+static void scan_task(void *param);
 static void update_ap_list(void);
 static const char *get_signal_bars(int8_t rssi);
 static const char *get_security_icon(wifi_auth_mode_t auth);
@@ -97,7 +101,11 @@ void wifi_scan_show(void)
     bsp_display_unlock();
 
     // Start scan
-    start_scan();
+    if (!scan_in_progress)
+    {
+      scan_in_progress = true;
+      xTaskCreate(scan_task, "wifi_scan", 4096, NULL, 5, NULL);
+    }
   }
   else
   {
@@ -122,28 +130,31 @@ static void start_scan(void)
   if (ret != ESP_OK)
   {
     ESP_LOGE(TAG, "Failed to start scan: %s", esp_err_to_name(ret));
-    bsp_display_lock(0);
-    lv_label_set_text(loading_label, "Scan failed");
-    bsp_display_unlock();
+    if (loading_label)
+    {
+      bsp_display_lock(0);
+      lv_label_set_text(loading_label, "Scan failed");
+      bsp_display_unlock();
+    }
     return;
   }
 
   // Wait for scan to complete with timeout
-  // Scan time: ~11 channels * 300ms max = ~3.3 seconds + overhead
-  const int timeout_ms = 5000;
-  const int check_interval_ms = 100;
-  int waited_ms = 0;
-
-  while (waited_ms < timeout_ms)
+  // Active scan across all channels can take several seconds
+  const int timeout_ms = 10000;
+  esp_err_t wait_ret = wifi_manager_wait_for_scan(timeout_ms);
+  if (wait_ret != ESP_OK)
   {
-    vTaskDelay(pdMS_TO_TICKS(check_interval_ms));
-    waited_ms += check_interval_ms;
-
-    wifi_state_t state = wifi_manager_get_state();
-    if (state != WIFI_STATE_SCANNING)
+    ESP_LOGW(TAG, "Scan wait timeout after %d ms", timeout_ms);
+    if (wifi_manager_get_state() == WIFI_STATE_SCANNING)
     {
-      // Scan completed
-      break;
+      if (loading_label)
+      {
+        bsp_display_lock(0);
+        lv_label_set_text(loading_label, "Scan timeout");
+        bsp_display_unlock();
+      }
+      return;
     }
   }
 
@@ -163,15 +174,31 @@ static void start_scan(void)
                scan_results[i].rssi);
     }
 
-    update_ap_list();
+    if (wifi_scan_screen && ap_list && loading_label)
+    {
+      update_ap_list();
+    }
   }
   else
   {
     ESP_LOGE(TAG, "Failed to get scan results: %s", esp_err_to_name(ret));
-    bsp_display_lock(0);
-    lv_label_set_text(loading_label, "Scan failed");
-    bsp_display_unlock();
+    if (loading_label)
+    {
+      bsp_display_lock(0);
+      lv_label_set_text(loading_label, "Scan failed");
+      bsp_display_unlock();
+    }
   }
+}
+
+static void scan_task(void *param)
+{
+  (void)param;
+
+  start_scan();
+
+  scan_in_progress = false;
+  vTaskDelete(NULL);
 }
 
 static void update_ap_list(void)

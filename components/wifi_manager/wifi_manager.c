@@ -91,8 +91,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
       break;
 
     case WIFI_EVENT_SCAN_DONE:
-      xEventGroupSetBits(wifi_mgr.event_group, WIFI_SCAN_DONE_BIT);
-
       // Fetch scan results - use static buffer to avoid stack overflow
       static wifi_ap_record_t ap_records[20];
       uint16_t ap_num = 20;
@@ -124,6 +122,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
       // Minimal logging to avoid stack overflow
       ESP_LOGI(TAG, "Scan done: %d APs", wifi_mgr.scan_count);
+
+      // Signal that scan results are ready
+      xEventGroupSetBits(wifi_mgr.event_group, WIFI_SCAN_DONE_BIT);
 
       wifi_manager_set_state(WIFI_STATE_DISCONNECTED);
       break;
@@ -322,6 +323,26 @@ esp_err_t wifi_manager_scan_start(void)
   }
 
   return ESP_OK;
+}
+
+esp_err_t wifi_manager_wait_for_scan(uint32_t timeout_ms)
+{
+  if (!wifi_mgr.initialized)
+  {
+    ESP_LOGE(TAG, "Not initialized");
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  EventBits_t bits = xEventGroupWaitBits(
+      wifi_mgr.event_group, WIFI_SCAN_DONE_BIT, pdTRUE, pdFALSE,
+      pdMS_TO_TICKS(timeout_ms));
+
+  if (bits & WIFI_SCAN_DONE_BIT)
+  {
+    return ESP_OK;
+  }
+
+  return ESP_ERR_TIMEOUT;
 }
 
 esp_err_t wifi_manager_get_scan_results(wifi_ap_info_t *ap_list,
