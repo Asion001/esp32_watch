@@ -49,6 +49,7 @@ Menu: **Component config → App: Sleep Manager**
 | `CONFIG_SLEEP_MANAGER_TOUCH_RESET_TIMER`          | Reset inactivity timer on touch | `y`     |
 | `CONFIG_SLEEP_MANAGER_PREVENT_SLEEP_ON_USB`       | Block sleep on USB VBUS         | `y`     |
 | `CONFIG_SLEEP_MANAGER_PREVENT_SCREEN_OFF_ON_USB`  | Block backlight off on USB      | `n`     |
+| `CONFIG_SLEEP_MANAGER_WIFI_SUSPEND`               | Suspend WiFi during sleep       | `n`     |
 | `CONFIG_SLEEP_MANAGER_DEBUG_LOGS`                 | Debug logs                      | `n`     |
 | `CONFIG_SLEEP_MANAGER_POWER_LOGS`                 | Battery/power logs              | `n`     |
 
@@ -82,7 +83,7 @@ Menu: **Component config → App: Sleep Manager**
 - **On (station mode)**: `wifi_manager_init()` starts WiFi with `WIFI_PS_MIN_MODEM` power-save mode.
 - **States**: `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `FAILED`, `SCANNING`.
 - **Notes**:
-  - Sleep manager does **not** automatically disable WiFi when sleeping.
+  - Sleep manager can automatically suspend WiFi when `CONFIG_SLEEP_MANAGER_WIFI_SUSPEND=y`.
   - Scans are active and consume more power; they temporarily disconnect if connected.
 
 ### RTC (PCF85063)
@@ -117,7 +118,6 @@ Menu: **Component config → App: Sleep Manager**
 
 ## Known Limitations / Current Behavior
 
-- No automatic WiFi suspend/resume on sleep transitions.
 - Display panel is not fully powered down (backlight-only sleep).
 - Sensor power gating (IMU, etc.) is not implemented yet; relies on PMU rails.
 

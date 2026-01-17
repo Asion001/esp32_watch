@@ -22,7 +22,7 @@ Short list of what’s next. Implementation later.
   - [ ] Validate wake sources (touch GPIO15, boot button GPIO9)
   - [x] Add sleep mode indicator UI (countdown before sleep)
   - [ ] Enable deep sleep after extended inactivity
-  - [ ] Suspend/resume WiFi around sleep to reduce idle draw
+  - [x] Suspend/resume WiFi around sleep to reduce idle draw
   - [ ] Power down display panel (not just backlight) if BSP allows
   - [ ] Add sensor/rail power gating (IMU, peripherals) via PMU
   - [ ] Disable charging during power measurement sessions
@@ -43,7 +43,7 @@ Short list of what’s next. Implementation later.
   - [x] Settings UI for triggering OTA and checking new versions
 
 - [ ] Battery calibration
-  - [ ] Improve percentage curve accuracy
+  - [x] Improve percentage curve accuracy
 
 - [ ] Reliability checks
   - [x] Watchdog for hang detection

@@ -42,6 +42,67 @@ static const char *TAG = "PMU";
 #define IBAT_MAX_MA 3000          // Maximum realistic current (+/- 3A)
 #define I2C_RETRY_COUNT 3         // Number of retries for I2C operations
 
+#ifdef CONFIG_BATTERY_CALIBRATION_CURVE
+typedef struct
+{
+  uint16_t mv;
+  uint8_t percent;
+} battery_curve_point_t;
+
+static const battery_curve_point_t battery_curve[] = {
+    {3300, 0},
+    {3500, 5},
+    {3600, 10},
+    {3700, 20},
+    {3750, 30},
+    {3800, 40},
+    {3850, 50},
+    {3900, 60},
+    {3950, 70},
+    {4000, 80},
+    {4100, 90},
+    {4200, 100},
+};
+
+static uint8_t battery_percent_from_curve(uint16_t voltage_mv)
+{
+  const size_t curve_len = sizeof(battery_curve) / sizeof(battery_curve[0]);
+
+  if (voltage_mv <= battery_curve[0].mv)
+  {
+    return battery_curve[0].percent;
+  }
+
+  if (voltage_mv >= battery_curve[curve_len - 1].mv)
+  {
+    return battery_curve[curve_len - 1].percent;
+  }
+
+  for (size_t i = 1; i < curve_len; i++)
+  {
+    if (voltage_mv <= battery_curve[i].mv)
+    {
+      const uint16_t mv0 = battery_curve[i - 1].mv;
+      const uint16_t mv1 = battery_curve[i].mv;
+      const uint8_t p0 = battery_curve[i - 1].percent;
+      const uint8_t p1 = battery_curve[i].percent;
+      const uint16_t mv_span = mv1 - mv0;
+      const uint16_t mv_delta = voltage_mv - mv0;
+      const int32_t percent_delta = (int32_t)p1 - (int32_t)p0;
+
+      if (mv_span == 0)
+      {
+        return p0;
+      }
+
+      return (uint8_t)(p0 + (percent_delta * (int32_t)mv_delta) / mv_span);
+    }
+  }
+
+  return battery_curve[curve_len - 1].percent;
+}
+#endif
+
 static i2c_master_bus_handle_t i2c_handle = NULL;
 static i2c_master_dev_handle_t pmu_dev = NULL;
 
@@ -146,6 +207,11 @@ esp_err_t axp2101_get_battery_percent(uint8_t *percent)
   // Simple linear mapping with two slopes
   // 3.3V (0%) -> 3.7V (50%) -> 4.2V (100%)
   int calculated_percent;
+
+#ifdef CONFIG_BATTERY_CALIBRATION_CURVE
+  *percent = battery_percent_from_curve(voltage_mv);
+  return ESP_OK;
+#endif
 
   if (voltage_mv <= VBAT_MIN_MV)
   {
