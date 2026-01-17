@@ -33,6 +33,9 @@ Short list of what’s next. Implementation later.
   - [ ] Watchdog for hang detection
   - [ ] Avoid long I2C blocks on UI thread
 
+- [ ] OTA updates
+  - [ ] Settings UI for triggering OTA and checking new versions
+
 ---
 
 ## Later (Backlog)
