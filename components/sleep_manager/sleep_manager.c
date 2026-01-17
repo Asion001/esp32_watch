@@ -17,6 +17,7 @@
 #include "lvgl.h"
 #include "pmu_axp2101.h"
 #include "uptime_tracker.h"
+#include <string.h>
 
 static const char *TAG = "SleepMgr";
 

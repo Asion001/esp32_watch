@@ -15,6 +15,18 @@ Short list of what’s next. Implementation later.
   - [ ] Measure power draw for key scenarios (idle, active, charging)
     - [ ] Requires external multimeter/bench supply; use power logs for timing
 
+- [ ] Power optimization steps (from docs)
+  - [ ] Measure actual power consumption with multimeter
+  - [ ] Adjust sleep timeout and backlight timeout for real usage
+  - [ ] Enable full sleep: backlight off + LVGL timer pause + LVGL rendering off
+  - [ ] Validate wake sources (touch GPIO15, boot button GPIO9)
+  - [x] Add sleep mode indicator UI (countdown before sleep)
+  - [ ] Enable deep sleep after extended inactivity
+  - [ ] Suspend/resume WiFi around sleep to reduce idle draw
+  - [ ] Power down display panel (not just backlight) if BSP allows
+  - [ ] Add sensor/rail power gating (IMU, peripherals) via PMU
+  - [ ] Disable charging during power measurement sessions
+
 - [x] Settings: show live WiFi connection status
   - [x] Status label updates on connect/disconnect
   - [x] Display IP / RSSI when connected (if available)

@@ -92,6 +92,23 @@ menu "App: Sleep Manager"
             Reset inactivity timer when user touches the screen.
             Disable to test automatic sleep regardless of touch activity.
 
+    config SLEEP_MANAGER_SLEEP_INDICATOR
+        bool "Show sleep countdown indicator"
+        depends on SLEEP_MANAGER_ENABLE
+        default n
+        help
+            Show a countdown indicator on the watchface before sleep.
+            Useful to give the user a brief warning before the display sleeps.
+
+    config SLEEP_MANAGER_SLEEP_INDICATOR_THRESHOLD_SECONDS
+        int "Sleep indicator threshold (seconds)"
+        depends on SLEEP_MANAGER_SLEEP_INDICATOR
+        default 5
+        range 1 30
+        help
+            Only show the sleep countdown when remaining time is within
+            this threshold. Keep small to avoid UI clutter.
+
     config SLEEP_MANAGER_PREVENT_SLEEP_ON_USB
         bool "Prevent sleep when USB/JTAG connected"
         depends on SLEEP_MANAGER_ENABLE

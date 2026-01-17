@@ -27,6 +27,9 @@ static lv_obj_t *date_label = NULL;
 static lv_obj_t *battery_label = NULL;
 static lv_obj_t *uptime_label = NULL;
 static lv_obj_t *boot_count_label = NULL;
+#ifdef CONFIG_SLEEP_MANAGER_SLEEP_INDICATOR
+static lv_obj_t *sleep_indicator_label = NULL;
+#endif
 static lv_timer_t *update_timer = NULL;
 static TaskHandle_t data_task_handle = NULL;
 static SemaphoreHandle_t data_mutex = NULL;
@@ -129,7 +132,22 @@ static const widget_config_t widget_configs[] = {
         .width = LV_SIZE_CONTENT,
         .height = LV_SIZE_CONTENT,
         .padding = 20, // Additional padding below uptime label
-    }};
+    }
+#ifdef CONFIG_SLEEP_MANAGER_SLEEP_INDICATOR
+    ,
+    // Sleep countdown indicator - bottom center
+    {
+        .obj_ptr = &sleep_indicator_label,
+        .font = &lv_font_montserrat_14,
+        .color = 0xFF8800,
+        .initial_text = "",
+        .align = LV_ALIGN_BOTTOM_MID,
+        .width = LV_SIZE_CONTENT,
+        .height = LV_SIZE_CONTENT,
+        .padding = 0,
+    }
+#endif
+};
 
 #define WIDGET_COUNT (sizeof(widget_configs) / sizeof(widget_configs[0]))
 
@@ -232,6 +250,29 @@ static void watchface_timer_cb(lv_timer_t *timer)
     lv_label_set_text_fmt(boot_count_label, "T%s(B%u)", total_str,
                           stats.boot_count);
   }
+
+#if defined(CONFIG_SLEEP_MANAGER_ENABLE) && defined(CONFIG_SLEEP_MANAGER_SLEEP_INDICATOR)
+  if (sleep_indicator_label)
+  {
+    uint32_t inactive_ms = sleep_manager_get_inactive_time();
+    uint32_t timeout_ms = SLEEP_TIMEOUT_MS;
+    uint32_t remaining_ms = (inactive_ms >= timeout_ms)
+                                ? 0
+                                : (timeout_ms - inactive_ms);
+    uint32_t remaining_sec = (remaining_ms + 999) / 1000;
+
+    if (remaining_sec <= CONFIG_SLEEP_MANAGER_SLEEP_INDICATOR_THRESHOLD_SECONDS)
+    {
+      lv_label_set_text_fmt(sleep_indicator_label, "Sleep in %us",
+                            remaining_sec);
+      lv_obj_clear_flag(sleep_indicator_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    else
+    {
+      lv_obj_add_flag(sleep_indicator_label, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+#endif
 
   // Periodically save uptime to NVS (every 60 seconds)
   save_counter++;
@@ -351,6 +392,10 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
       x_offset = -SAFE_AREA_HORIZONTAL;
       y_offset = -SAFE_AREA_BOTTOM;
       break;
+    case LV_ALIGN_BOTTOM_MID:
+      x_offset = 0;
+      y_offset = -SAFE_AREA_BOTTOM;
+      break;
     case LV_ALIGN_CENTER:
     default:
       // Center alignment uses padding directly as offset
@@ -368,6 +413,13 @@ lv_obj_t *watchface_create(lv_obj_t *parent)
     // Store reference
     *(config->obj_ptr) = label;
   }
+
+#ifdef CONFIG_SLEEP_MANAGER_SLEEP_INDICATOR
+  if (sleep_indicator_label)
+  {
+    lv_obj_add_flag(sleep_indicator_label, LV_OBJ_FLAG_HIDDEN);
+  }
+#endif
 
   // Create update timer (1000ms = 1 second)
   update_timer = lv_timer_create(watchface_timer_cb, 1000, NULL);
