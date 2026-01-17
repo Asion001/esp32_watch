@@ -88,13 +88,13 @@
 
 ### Time Synchronization
 
-- [ ] NTP client integration
-- [ ] Manual NTP server configuration
-- [ ] Time zone selection UI (dropdown/list)
-- [ ] DST (Daylight Saving Time) support
-- [ ] Automatic time sync on WiFi connect
-- [ ] RTC auto-update from NTP
-- [ ] Last sync timestamp display
+- [x] NTP client integration
+- [x] Manual NTP server configuration
+- [x] Time zone selection UI (dropdown/list)
+- [x] DST (Daylight Saving Time) support
+- [x] Automatic time sync on WiFi connect
+- [x] RTC auto-update from NTP
+- [x] Last sync timestamp display
 
 ### Storage System
 

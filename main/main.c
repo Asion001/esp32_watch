@@ -7,6 +7,9 @@
 #include "apps/settings/screens/wifi_settings.h"
 #include "wifi_manager.h"
 #endif
+#ifdef CONFIG_NTP_CLIENT_ENABLE
+#include "ntp_client.h"
+#endif
 #ifdef CONFIG_ENABLE_OTA
 #include "ota_manager.h"
 #endif
@@ -38,6 +41,13 @@ static void wifi_status_callback(wifi_state_t state, void *user_data)
 {
   ESP_LOGI(TAG, "WiFi state changed: %d", state);
   wifi_settings_update_status();
+
+#ifdef CONFIG_NTP_CLIENT_ENABLE
+  if (state == WIFI_STATE_CONNECTED)
+  {
+    ntp_client_on_wifi_connected();
+  }
+#endif
 }
 #endif
 
@@ -98,16 +108,28 @@ void app_main(void)
     wifi_manager_register_callback(wifi_status_callback, NULL);
 
 #ifdef CONFIG_WIFI_AUTO_CONNECT
-    // Auto-connect if credentials are saved
-    if (wifi_manager_has_credentials())
+    // Auto-connect (uses saved credentials or defaults if configured)
+    ESP_LOGI(TAG, "Attempting WiFi auto-connect...");
+    esp_err_t auto_ret = wifi_manager_auto_connect();
+    if (auto_ret != ESP_OK && auto_ret != ESP_ERR_NOT_FOUND)
     {
-      ESP_LOGI(TAG, "Saved WiFi credentials found, attempting auto-connect...");
-      wifi_manager_auto_connect();
+      ESP_LOGW(TAG, "WiFi auto-connect failed: %s", esp_err_to_name(auto_ret));
     }
 #endif
   }
 #else
   ESP_LOGI(TAG, "WiFi disabled in configuration");
+#endif
+#ifdef CONFIG_NTP_CLIENT_ENABLE
+  ESP_LOGI(TAG, "Initializing NTP client...");
+  ret = ntp_client_init();
+  if (ret != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to initialize NTP client: %s",
+             esp_err_to_name(ret));
+  }
+#else
+  ESP_LOGI(TAG, "NTP client disabled in configuration");
 #endif
 
 #ifdef CONFIG_ENABLE_OTA

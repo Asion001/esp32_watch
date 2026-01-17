@@ -10,6 +10,7 @@
 #include "screens/about_screen.h"
 #include "screens/display_settings.h"
 #include "screens/system_settings.h"
+#include "screens/time_sync.h"
 #include "screens/wifi_settings.h"
 #include <string.h>
 
@@ -72,8 +73,12 @@ static void menu_item_event_cb(lv_event_t *e)
   }
   else if (strcmp(text, "Time & Sync") == 0)
   {
-    ESP_LOGI(TAG, "Time & Sync settings - not yet implemented");
-    // TODO: Navigate to time settings
+#ifdef CONFIG_NTP_CLIENT_ENABLE
+    time_sync_create(settings_screen);
+    time_sync_show();
+#else
+    ESP_LOGI(TAG, "Time & Sync disabled in menuconfig");
+#endif
   }
   else if (strcmp(text, "WiFi") == 0)
   {

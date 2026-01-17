@@ -1,0 +1,56 @@
+menu "App: Time Synchronization"
+
+    config NTP_CLIENT_ENABLE
+        bool "Enable NTP time synchronization"
+        depends on ENABLE_WIFI
+        default y
+        help
+            Enable NTP client for time synchronization over WiFi.
+            When disabled, time sync UI and NTP logic are not compiled.
+
+    config NTP_SYNC_ON_WIFI_CONNECT
+        bool "Sync time on WiFi connect"
+        depends on NTP_CLIENT_ENABLE
+        default y
+        help
+            Automatically start an NTP sync when WiFi connects.
+
+    config NTP_SYNC_INTERVAL_MIN
+        int "Minimum sync interval (minutes)"
+        depends on NTP_CLIENT_ENABLE
+        default 720
+        range 10 10080
+        help
+            Minimum minutes between automatic sync attempts.
+            Default is 12 hours.
+
+    config NTP_DEFAULT_SERVER
+        string "Default NTP server"
+        depends on NTP_CLIENT_ENABLE
+        default "pool.ntp.org"
+        help
+            Default NTP server hostname used when no custom server is saved.
+
+    config NTP_DEFAULT_TIMEZONE
+        string "Default time zone (UTC offset)"
+        depends on NTP_CLIENT_ENABLE
+        default "UTC+0"
+        help
+            Default time zone string in UTC offset format.
+            Example: UTC-5, UTC+2
+
+    config NTP_DEFAULT_DST
+        bool "Default DST enabled"
+        depends on NTP_CLIENT_ENABLE
+        default n
+        help
+            Default Daylight Saving Time setting when no value is saved.
+
+    config NTP_DEBUG_LOGS
+        bool "Enable debug logs"
+        depends on NTP_CLIENT_ENABLE
+        default n
+        help
+            Enable verbose logs for NTP client.
+
+endmenu

@@ -25,6 +25,7 @@ set(COMPONENT_REQUIRES
     button_handler
     wifi_manager
     ota_manager
+    ntp_client
 )
 
 idf_component_register(

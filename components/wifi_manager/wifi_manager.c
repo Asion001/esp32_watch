@@ -456,11 +456,6 @@ esp_err_t wifi_manager_connect(const char *ssid, const char *password,
     return ret;
   }
 
-  // Clear password from memory for security
-  if (password)
-  {
-    memset((void *)password, 0, strlen(password));
-  }
   memset(&wifi_config, 0, sizeof(wifi_config));
 
   return ESP_OK;
