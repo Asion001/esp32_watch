@@ -31,6 +31,7 @@ Short list of what’s next. Implementation later.
   - [x] Status label updates on connect/disconnect
   - [x] Display IP / RSSI when connected (if available)
 
+
 ---
 
 ## Next (Short Term)
